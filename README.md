@@ -1,5 +1,7 @@
 # DriverIndexer
 
+[简体中文](README.zh.md) [English](README.md)
+
 ## Introduction
 
 `DriverIndexer` is a tool for creating, reading and installing driver package indexes.

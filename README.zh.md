@@ -1,5 +1,7 @@
 # DriverIndexer
 
+[简体中文](README.zh.md) [English](README.md)
+
 ## 介绍
 
 `DriverIndexer` 是用于创建、读取和安装驱动包索引的工具。
