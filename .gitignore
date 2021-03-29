@@ -1,0 +1,17 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+.idea
+.vscode
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+target
+*.iml
+Cargo.lock
+
+# Added by cargo
+
+/target

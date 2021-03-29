@@ -1,0 +1,44 @@
+[package]
+name = "DriverIndexer"
+version = "0.2.0"
+authors = ["Fir"]
+edition = "2018"
+build = "build.rs"
+
+[build-dependencies]
+embed-resource = "1.4"
+
+[profile.release]
+# 调整优化等级。默认的 release 优化等级为 3，这个等级下编译器会进行循环展开之类的操作以体积膨胀为代价提高程序运行速度
+opt-level = 'z'
+# 开启 LTO（链接时优化）。可以消除大量冗余代码，减小二进制体积，代价是更长的链接时间
+lto = true
+# 调整并行代码生成单元数量。默认会启用 16 个并行代码生成单元，对编译速度有提升，但是会妨碍某些优化的进行
+codegen-units = 1
+# Panic 时立刻终止。禁用生成栈回溯，注意：此选项会对程序的行为产生影响
+panic = 'abort'
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+clap = "~2.33"
+glob = "0.3.0"
+chardet = "0.2.4"
+encoding = "0.2"
+regex = { version = "1", default-features = false, features = ["std", "perf"] }
+serde = { version = "1.0.123", features = ["derive"] }
+serde_json = "1.0"
+rust-embed = "5.9.0"
+lazy_static = "1.4.0"
+console = "0.14.0"
+chrono = "0.4"
+remove_dir_all = "0.7.0"
+#tokio = "1.4.0"
+tokio = { version = "1", features = ["full"] }
+
+
+#fluent-bundle = "0.15.0"
+#unic-langid = { version = "0.9.0", features = ["macros"] }
+
+#subprocess = "0.2.6"
+#anyhow = "1.0"
+#thiserror = "1.0"
