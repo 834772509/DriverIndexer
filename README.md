@@ -2,31 +2,66 @@
 
 ## Introduction
 
-`DriverIndexer` is a tool used to create, read and install the driver package index.
+`DriverIndexer` is a tool for creating, reading and installing driver package indexes.
 
 ## Software Architecture
 
-Develop with `Rust`,call `devcon.exe` to get the hardware id and install the driver
+Use `Rust` to develop, call `devcon.exe` to obtain the hardware id and install the driver.
 
 ## Instructions for use
 
-1. Open the cmd
-2. Enter the path of this program to view the instructions
+This program is a command line program, so it needs to be run with parameters after it, and it can be run through `cmd`.
 
-### Open source license
+### Create Drive Index
 
-`DriverIndexer` use the GPL V3.0 agreement to open source, please try to abide by the open source agreement.
+`DriverIndexer.exe create-index Drive path Index file save path`
 
-### Thanks
+- `DriverIndexer.exe create-index D:\netcard index.json`
+- `DriverIndexer.exe create-index D:\netcard D:\index.json`
+
+### Load the driver
+
+- No driver index: `DriverIndexer.exe load-driver drive path/drive package path`
+  - `DriverIndexer.exe load-driver D:\netcard`
+  - `DriverIndexer.exe load-driver D:\netcard.7z`
+- Drive index: `DriverIndexer.exe load-driver drive package path drive path`
+  - `DriverIndexer.exe load-driver D:\netcard.7z netcard.json`
+  - `DriverIndexer.exe load-driver D:\netcard.7z D:\netcard.json`
+
+### Organize the drive
+
+`DriverIndexer.exe classify-driver drive path`
+
+- `DriverIndexer.exe classify-driver D:\netcard`
+
+### Open log
+
+`DriverIndexer.exe command parameter --debug`
+
+- `DriverIndexer.exe create-index D:\netcard index.json --debug`
+- `DriverIndexer.exe load-driver D:\netcard --debug`
+
+### View command help
+
+`DriverIndexer.exe command name --help`
+
+- `DriverIndexer.exe load-driver --help`
+- `DriverIndexer.exe create-index --help`
+
+## Open source license
+
+`DriverIndexer` uses GPL V3.0 agreement to open source, please try to abide by the open source agreement.
+
+## Thanks
 
 - Hydrogen
 - Lightning
 - Skyfree
-- 红毛樱木
+- Red Sakuragi
 
-## Participate in contribution
+## Participate in Contribution
 
-1. Fork this repository
-2. Create a new Feat_xxx branch
-3. Submit code
-4. Create a new Pull Request
+1. Fork this warehouse
+2. Create new Feat_xxx branch
+3. Submit the code
+4. New Pull Request
