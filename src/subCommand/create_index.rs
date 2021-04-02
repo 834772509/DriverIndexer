@@ -11,7 +11,8 @@ use serde::{Serialize, Deserialize};
 use chardet::{detect, charset2encoding};
 use encoding::label::encoding_from_whatwg_label;
 use crate::utils::devcon::{HwID, Devcon};
-
+use crate::TEMP_PATH;
+use crate::utils::Zip7z::Zip7z;
 
 /// INF驱动信息
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -114,15 +115,42 @@ impl InfInfo {
     }
 }
 
-pub fn createIndex(basePath: &PathBuf, indexPath: &PathBuf) {
+pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
     writeConsole(ConsoleType::Info, "Processing, please wait……");
-    let infList = getFileList(&basePath, "*.inf").unwrap();
+
+    let zip = Zip7z::new().unwrap();
+
+    // INF文件父路径
+    let infParentPath;
+    // INF文件列表
+    let infList;
+    // 保存索引路径
+    let indexPath;
+
+    if basePath.is_dir() {
+        // 从驱动目录中创建索引文件
+        infList = getFileList(&basePath, "*.inf").unwrap();
+        infParentPath = basePath.clone();
+        // 如果输入的索引路径是相对路径，则令实际路径为驱动目录所在路径
+        indexPath = if saveIndexPath.is_relative() { basePath.join(&saveIndexPath) } else { saveIndexPath.clone() };
+    } else {
+        // 从文件中创建索引文件
+        infParentPath = TEMP_PATH.join(basePath.file_stem().unwrap());
+        // 解压INF文件
+        zip.extractFilesFromPathRecurseSubdirectories(&basePath, "*.inf", &infParentPath).unwrap();
+        infList = getFileList(&infParentPath, "*.inf").unwrap();
+        // 如果输入的索引路径是相对路径，则令实际实际为驱动包所在路径
+        indexPath = if saveIndexPath.is_relative() { basePath.parent().unwrap().join(&saveIndexPath) } else { saveIndexPath.clone() };
+    }
+
     let mut infInfoList: Vec<InfInfo> = Vec::new();
     let mut successCount = 0;
     let mut ErrorCount = 0;
     let mut blankCount = 0;
+
+    // 遍历INF文件
     for item in infList.iter() {
-        match InfInfo::parsingInfFile(&basePath, item) {
+        match InfInfo::parsingInfFile(&infParentPath, item) {
             Ok(currentInfo) => {
                 if currentInfo.DriverList.len() == 0 {
                     blankCount += 1;
@@ -138,7 +166,6 @@ pub fn createIndex(basePath: &PathBuf, indexPath: &PathBuf) {
             }
         };
     };
-    let indexPath = if indexPath.is_relative() { basePath.join(&indexPath) } else { indexPath.clone() };
 
     if let Err(_e) = saveDataFromJson(&infInfoList, &indexPath) {
         writeConsole(ConsoleType::Err, "Failed to save index file");

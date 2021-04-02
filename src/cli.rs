@@ -93,11 +93,6 @@ pub fn matches(matches: ArgMatches<'_>) {
 
             let driverPath = PathBuf::from(matches.value_of(DRIVEPATH).unwrap());
             let indexPath = PathBuf::from(matches.value_of(INDEXATH).unwrap());
-
-            if driverPath.is_dir() == false {
-                writeConsole(ConsoleType::Err, "The path is invalid, please enter a valid path");
-                return;
-            }
             subCommand::create_index::createIndex(&driverPath, &indexPath);
         }
 
