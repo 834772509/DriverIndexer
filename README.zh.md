@@ -62,8 +62,8 @@
   - `DriverIndexer.exe load-driver D:\netcard.7z netcard.json`
   - `DriverIndexer.exe load-driver D:\netcard.7z D:\netcard.json`
 - 指定驱动类型：`DriverIndexer.exe load-driver 驱动包路径 --DriveClass 驱动类型`
-  - `DriverIndexer.exe load-driver D:\netcard.7z --DriveClass Net`
-  - `DriverIndexer.exe load-driver D:\netcard.7z --DriveClass Display`
+  - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Net`
+  - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Display`
 
 ### 整理驱动
 

@@ -62,8 +62,8 @@ This program is a command line program, so it needs to be run with parameters af
   - `DriverIndexer.exe load-driver D:\netcard.7z netcard.json`
   - `DriverIndexer.exe load-driver D:\netcard.7z D:\netcard.json`
 - Specify drive type: `DriverIndexer.exe load-driver drivePackagePath --DriveClass DriveType`
-  - `DriverIndexer.exe load-driver D:\netcard.7z --DriveClass Net`
-  - `DriverIndexer.exe load-driver D:\netcard.7z --DriveClass Display`
+  - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Net`
+  - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Display`
 
 ### Organize the drive
 
