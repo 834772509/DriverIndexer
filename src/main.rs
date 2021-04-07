@@ -6,10 +6,10 @@
 
 mod subCommand;
 mod utils;
-mod cli;
 mod i18n;
 
 mod test;
+mod cli;
 
 use std::path::{PathBuf};
 use rust_embed::RustEmbed;

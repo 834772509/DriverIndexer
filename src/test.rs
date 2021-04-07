@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod Test {
     use std::path::{PathBuf};
+    use crate::cli::isValidPathIncludeWildcard;
+    use crate::utils::devcon::Devcon;
 
     // 文件解压测试
     #[test]
@@ -70,14 +72,16 @@ mod Test {
         use crate::subCommand::create_index::InfInfo;
         use crate::subCommand::create_index::getMatchInfo;
 
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\万能网卡驱动-驱动精灵");
+        Devcon::new().unwrap().removeDevice(r"USB\VID_0BDA&PID_B711&REV_0200").unwrap();
+
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
         let infList = getFileList(&basePath, "*.inf").unwrap();
 
         let mut infInfoList: Vec<InfInfo> = Vec::new();
         for item in infList.iter() {
             infInfoList.push(InfInfo::parsingInfFile(&basePath, item).unwrap());
         }
-        getMatchInfo(&infInfoList, false).unwrap();
+        println!("{:?}", getMatchInfo(&infInfoList, Option::from("net"), false).unwrap());
     }
 
     // 驱动加载测试
@@ -87,15 +91,15 @@ mod Test {
         use crate::subCommand::load_driver::loadDriver;
 
         Devcon::new().unwrap().removeDevice(r"USB\VID_0BDA&PID_B711&REV_0200").unwrap();
-        Devcon::new().unwrap().rescan().unwrap();
 
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop");
+        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop");
         // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\Network.zip");
         // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\USB无线网卡驱动.zip");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
 
-        let index = None;
+        // let index = None;
         // let index = Some(PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.json"));
-        loadDriver(&basePath, index, false);
+        // loadDriver(&basePath, index, false);
     }
 
     // 驱动整理测试
@@ -150,6 +154,11 @@ mod Test {
         for item in getFileList(&path, "*.7z").unwrap() {
             println!("{}", item.to_str().unwrap());
         }
+    }
+
+    #[test]
+    fn wildcard2() {
+        println!("{:?}", isValidPathIncludeWildcard(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\aaa.zip".to_string()));
     }
 
     // 环境变量测试

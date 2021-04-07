@@ -11,7 +11,7 @@ use crate::utils::devcon::Devcon;
 /// 参数1: 驱动包路径
 /// 参数2: 索引Option
 /// 参数3: 是否为精确匹配
-pub async fn loadDriver(driverPackPath: &PathBuf, indexPath: Option<PathBuf>, isAccurateMatch: bool) {
+pub fn loadDriver(driverPackPath: &PathBuf, indexPath: Option<PathBuf>, driveClass: Option<&str>, isAccurateMatch: bool) {
     let zip = Zip7z::new().unwrap();
 
     // 创建临时目录
@@ -69,7 +69,7 @@ pub async fn loadDriver(driverPackPath: &PathBuf, indexPath: Option<PathBuf>, is
     }
 
     // 匹配硬件id
-    let matchHardwareAndDriver = getMatchInfo(&infInfoList, isAccurateMatch).unwrap();
+    let matchHardwareAndDriver = getMatchInfo(&infInfoList, driveClass, isAccurateMatch).unwrap();
     if matchHardwareAndDriver.len() == 0 {
         writeConsole(ConsoleType::Err, "The driver that currently needs to be matched is not found");
         return;

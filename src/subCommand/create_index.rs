@@ -13,6 +13,7 @@ use encoding::label::encoding_from_whatwg_label;
 use crate::utils::devcon::{HwID, Devcon};
 use crate::TEMP_PATH;
 use crate::utils::Zip7z::Zip7z;
+use serde_json::to_string;
 
 /// INF驱动信息
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -196,7 +197,7 @@ pub fn getIndexData(indexPath: &PathBuf) -> Result<Vec<InfInfo>, Box<dyn Error>>
 /// 获取匹配驱动的信息
 /// 参数1: INF驱动信息列表
 /// 参数2: 是否为精准匹配（不匹配兼容ID）
-pub fn getMatchInfo(infInfoList: &Vec<InfInfo>, isAccurateMatch: bool) -> Result<Vec<(HwID, Vec<InfInfo>)>, Box<dyn Error>> {
+pub fn getMatchInfo(infInfoList: &Vec<InfInfo>, driveClass: Option<&str>, isAccurateMatch: bool) -> Result<Vec<(HwID, Vec<InfInfo>)>, Box<dyn Error>> {
     let devcon = Devcon::new()?;
     // 扫描以发现新的硬件
     devcon.rescan()?;
@@ -211,49 +212,37 @@ pub fn getMatchInfo(infInfoList: &Vec<InfInfo>, isAccurateMatch: bool) -> Result
 
     // 遍历有问题的硬件id信息
     for idInfo in idInfo.iter() {
-        // 空匹配信息
+        // 创建匹配信息列表
         let mut macthList: Vec<InfInfo> = Vec::new();
 
-        // 优先对比硬件id
-        // println!("正在匹配: {}", idInfo.Name);
-        for haID in idInfo.HardwareIDs.iter() {
-            // println!("     遍历中");
+        let mut matchFn = |haID: &String| {
             // 遍历inf列表
             for InfInfo in infInfoList {
                 // 遍历INF中的硬件id
                 for infID in InfInfo.DriverList.iter() {
                     if haID.to_lowercase() == infID.to_lowercase() {
-                        // println!("     匹配成功");
+                        // 如果指定了安装驱动类别 且 不符合则跳过此INF
+                        if driveClass.is_some() && InfInfo.Class.to_lowercase() != driveClass.unwrap().to_string().to_lowercase() {
+                            break;
+                        }
                         macthList.push(InfInfo.clone());
                     }
                 }
             }
-        }
+        };
+
+        // 优先对比硬件id
+        for haID in idInfo.HardwareIDs.iter() { matchFn(haID); }
 
         if !isAccurateMatch {
             // 对比兼容id
-            for haID in idInfo.CompatibleIDs.iter() {
-                // println!("     遍历中");
-                // 遍历inf列表
-                for InfInfo in infInfoList {
-                    // 遍历INF中的硬件id
-                    for infID in InfInfo.DriverList.iter() {
-                        if haID.to_lowercase() == infID.to_lowercase() {
-                            // println!("     匹配成功");
-                            macthList.push(InfInfo.clone());
-                        }
-                    }
-                }
-            }
+            for haID in idInfo.CompatibleIDs.iter() { matchFn(haID); }
         }
 
-        if macthList.len() == 0 {
-            // 没有匹配到该设备的驱动信息，直接匹配下一个设备
-            continue;
-        }
+        // 没有匹配到该设备的驱动信息，直接匹配下一个设备
+        if macthList.len() == 0 { continue; }
+
         macthInfo.push((idInfo.clone(), macthList));
     }
-    // println!("{:#?}", macthInfo);
-
     Ok(macthInfo)
 }
