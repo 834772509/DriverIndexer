@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::error::Error;
 use std::fs;
 use encoding::{DecoderTrap};
-use regex::{Regex};
+use regex::{Regex, RegexBuilder};
 use std::fs::File;
 use std::io::Read;
 use crate::utils::util::{getFileList, getStringCenter};
@@ -13,7 +13,6 @@ use encoding::label::encoding_from_whatwg_label;
 use crate::utils::devcon::{HwID, Devcon};
 use crate::TEMP_PATH;
 use crate::utils::Zip7z::Zip7z;
-use serde_json::to_string;
 
 /// INF驱动信息
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -26,6 +25,10 @@ pub struct InfInfo {
     pub(crate) Class: String,
     /// 驱动厂商
     pub(crate) Provider: String,
+    /// 驱动日期
+    pub(crate) Date: String,
+    /// 驱动版本
+    pub(crate) Version: String,
     /// 驱动硬件id列表
     pub(crate) DriverList: Vec<String>,
 }
@@ -36,14 +39,13 @@ impl InfInfo {
     /// 参数2: inf 文件路径
     pub fn parsingInfFile(basePath: &PathBuf, infFile: &PathBuf) -> Result<InfInfo, Box<dyn Error>> {
         // let regExpression = [r"PCI\\.*?&.*?&[^; \f\n\r\t\v]+", r"USB\\.*?&[^; \f\n\r\t\v]+", ];
-        // 所有类别取自 [HKLM\SYSTEM\ControlSet001\Enum]
-        let Class = ["ACPI", "ACPI_HAL", "BTH", "BTHENUM", "BTHHFENUM", "DISPLAY", "HDAUDIO", "HID", "HTREE", "PCI", "ROOT", "SCSI", "STORAGE", "SW", "SWD", "TERMINPUT_BUS", "TS_USB_HUB_Enumerator", "UEFI", "UMB", "USB", "USBSTOR"];
-
-        let mut regExpression = Vec::new();
-        for item in Class.iter() {
+        lazy_static! {
+            // 所有类别取自 [HKLM\SYSTEM\ControlSet001\Enum]
+            static ref driverType: [&'static str; 22] = ["ACPI", "ACPI_HAL", "BTH", "BTHENUM", "BTHHFENUM", "DISPLAY", "HDAUDIO", "HID", "HTREE", "PCI", "ROOT", "SCSI", "SD", "STORAGE", "SW", "SWD", "TERMINPUT_BUS", "TS_USB_HUB_Enumerator", "UEFI", "UMB", "USB", "USBSTOR"];
             // 驱动ID匹配正则表达式
-            // regExpression.push(format!(r",{}\\[^; \f\n\r\t\v]+", item));
-            regExpression.push(format!(r",{}\\[^,; \f\n\r\t\v]+", item));
+            static ref regExpression: Vec<String> = driverType.iter().map(|&item| format!(r",{}\\[^,; \f\n\r\t\v]+", item)).collect();
+            // 编译正则表达式（确保正则表达式只被编译一次）
+            static ref regExpressionList: Vec<Regex> = regExpression.iter().map(|item| RegexBuilder::new(item).case_insensitive(true).build().unwrap()).collect();
         }
 
         // 读取INF文件
@@ -56,34 +58,44 @@ impl InfInfo {
         let coder = encoding_from_whatwg_label(charset2encoding(&result.0)).unwrap();
         let infContent = coder.decode(&fileBuf, DecoderTrap::Ignore)?;
 
-        // 去除INF内的所有空格
-        let infContent = infContent.replace(" ", "");
-        // 去除INF内的所有tab符
-        let infContent = infContent.replace("	", "");
+        // 去除INF内的所有 空格 与 tab符
+        let infContent = infContent.replace(" ", "").replace("	", "");
 
         let mut idList: Vec<String> = Vec::new();
 
         // 遍历正则表达式
-        for item in regExpression.iter() {
-            let re = Regex::new(item)?;
-            for iten in re.captures_iter(&*infContent) {
-                // 将数据增加至数组，最后返回整个数组
-                let id = String::from(iten.get(0).unwrap().as_str());
-                // 删除逗号
-                let id = id.replace(",", "");
+        for re in regExpressionList.iter() {
+            // 匹配正则表达式
+            let hwIdList: Vec<_> = re.find_iter(&*infContent).collect();
+            for id in hwIdList {
+                // 删除逗号、转为大写
+                let id = id.as_str().replace(",", "").to_uppercase();
                 // 检测是否重复
-                if !idList.contains(&id) {
-                    idList.push(id);
+                if !idList.contains(&id) { idList.push(id); }
+            }
+        }
+
+        // 闭包函数-取INF配置项内容
+        let getInfItemFun = |itemName: &str| {
+            if let Ok(re) = Regex::new(&*format!(r"{}=\S*", itemName)) {
+                let contentList: Vec<_> = re.find_iter(&*infContent).collect();
+                for item in contentList {
+                    let resultContent = item.as_str().replace(&*format!(r"{}=", itemName), "");
+                    return resultContent;
                 }
             }
+            return "".to_string();
         };
 
         // 获取INF类别
-        let class = getStringCenter(&infContent, "Class=", "\n").unwrap_or("".to_string()).replace("\r", "");
+        // let class = getStringCenter(&infContent, "Class=", "\n").unwrap_or("".to_string()).replace("\r", "");
+        let class = getInfItemFun("Class");
 
-        // 获取INF版本
-        // let driverDateAndDriverVer = getStringCenter(&infContent, "DriverVer=", "\n").unwrap_or("".to_string());
-        // println!("{:?}", driverDateAndDriverVer.split(","));
+        // 获取INF版本、日期
+        let dateAndVersion = getInfItemFun("DriverVer");
+        let dateAndVersion: Vec<&str> = dateAndVersion.split(",").collect();
+        let date = *dateAndVersion.get(0).unwrap_or(&"");
+        let version = *dateAndVersion.get(1).unwrap_or(&"");
 
         // 获取INF厂商
         let provider = getStringCenter(&infContent, "Provider=", "\n").unwrap_or("".to_string())
@@ -98,10 +110,6 @@ impl InfInfo {
             .replace(",Inc.", "")
             .replace("®", "")
             .replace("(R)", "");
-        // if provider == "" {
-        // println!("{:?}", infFile);
-        // println!("{}", infContent);
-        // }
 
         // 获取INF文件相对路径
         let parentPath = infFile.parent().unwrap().strip_prefix(basePath)?;
@@ -111,6 +119,8 @@ impl InfInfo {
             Inf: infFile.file_name().unwrap().to_str().unwrap().parse().unwrap(),
             Class: class,
             Provider: provider,
+            Date: date.to_string(),
+            Version: version.to_string(),
             DriverList: idList,
         })
     }
@@ -151,21 +161,18 @@ pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
 
     // 遍历INF文件
     for item in infList.iter() {
-        match InfInfo::parsingInfFile(&infParentPath, item) {
-            Ok(currentInfo) => {
-                if currentInfo.DriverList.len() == 0 {
-                    blankCount += 1;
-                    writeConsole(ConsoleType::Warning, &*format!("The hardware id in this file is not detected: {}", &item.to_str().unwrap()));
-                    continue;
-                }
-                successCount += 1;
-                infInfoList.push(currentInfo);
+        if let Ok(currentInfo) = InfInfo::parsingInfFile(&infParentPath, item) {
+            if currentInfo.DriverList.len() == 0 {
+                blankCount += 1;
+                writeConsole(ConsoleType::Warning, &*format!("The hardware id in this file is not detected: {}", &item.to_str().unwrap()));
+                continue;
             }
-            Err(_e) => {
-                ErrorCount += 1;
-                writeConsole(ConsoleType::Err, &*format!("INF parsing error: {}", &item.to_str().unwrap()));
-            }
-        };
+            successCount += 1;
+            infInfoList.push(currentInfo);
+        } else {
+            ErrorCount += 1;
+            writeConsole(ConsoleType::Err, &*format!("INF parsing error: {}", &item.to_str().unwrap()));
+        }
     };
 
     if let Err(_e) = saveDataFromJson(&infInfoList, &indexPath) {
@@ -186,7 +193,7 @@ fn saveDataFromJson(Data: &Vec<InfInfo>, savaPath: &PathBuf) -> Result<(), Box<d
 
 /// 获取索引数据
 /// 参数1: inf文件路径
-pub fn getIndexData(indexPath: &PathBuf) -> Result<Vec<InfInfo>, Box<dyn Error>> {
+pub fn parsingIndexData(indexPath: &PathBuf) -> Result<Vec<InfInfo>, Box<dyn Error>> {
     let mut indexFile = File::open(indexPath)?;
     let mut indexContent = String::new();
     indexFile.read_to_string(&mut indexContent)?;

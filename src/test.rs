@@ -3,6 +3,7 @@ mod Test {
     use std::path::{PathBuf};
     use crate::cli::isValidPathIncludeWildcard;
     use crate::utils::devcon::Devcon;
+    use std::fs::File;
 
     // 文件解压测试
     #[test]
@@ -42,10 +43,9 @@ mod Test {
     fn parsingInfFileTest() {
         use crate::subCommand::create_index::InfInfo;
 
-        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
-        // let infPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\Wlan\Intel\20200915\Netwtw08.INF");
+        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\Net");
         let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop");
-        let infPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\oem2.inf");
+        let infPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\SN9C128.inf");
         println!("{:#?}", InfInfo::parsingInfFile(&basePath, &infPath).unwrap());
     }
 
@@ -53,16 +53,20 @@ mod Test {
     #[test]
     fn reTest() {
         use regex::RegexSet;
+        use regex::RegexSetBuilder;
 
+        let reSet = RegexSetBuilder::new(&["USB", "45646"])
+            .case_insensitive(true)
+            .build().unwrap();
+        let aaa = reSet.matches("USB SADFASDF SDAFFDAS 45646");
 
-        // let re = RegexSet::new(&regExpression).unwrap();
-        let re = RegexSet::new(&[
-            r"ACPI",
-            r"PCI"
-        ]).unwrap();
-        let matches = re.matches(&"AAA PCI BBB ACPI");
+        // let bbb mut = aaa.into_iter();
+        // println!("{:?}", bbb.next());
 
-        println!("{:?}", matches.matched(1));
+        // for item in aaa.into_iter() {
+        // println!("{:?}", aaa.matched(item));
+        // println!("{:?}", item.next());
+        // }
     }
 
     // 驱动匹配测试
@@ -74,7 +78,8 @@ mod Test {
 
         Devcon::new().unwrap().removeDevice(r"USB\VID_0BDA&PID_B711&REV_0200").unwrap();
 
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
+        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\net");
         let infList = getFileList(&basePath, "*.inf").unwrap();
 
         let mut infInfoList: Vec<InfInfo> = Vec::new();
@@ -92,14 +97,13 @@ mod Test {
 
         Devcon::new().unwrap().removeDevice(r"USB\VID_0BDA&PID_B711&REV_0200").unwrap();
 
-        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop");
         // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\Network.zip");
-        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\USB无线网卡驱动.zip");
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.zip");
+        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
 
-        // let index = None;
+        let index = None;
         // let index = Some(PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.json"));
-        // loadDriver(&basePath, index, false);
+        loadDriver(&basePath, index, None, false);
     }
 
     // 驱动整理测试

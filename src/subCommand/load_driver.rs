@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::{fs};
 use crate::TEMP_PATH;
 use crate::utils::console::{writeConsole, ConsoleType};
-use crate::subCommand::create_index::{getIndexData, InfInfo, getMatchInfo};
+use crate::subCommand::create_index::{parsingIndexData, InfInfo, getMatchInfo};
 use crate::utils::devcon::Devcon;
 
 /// 加载驱动包。支持驱动包路径、驱动路径
@@ -39,7 +39,7 @@ pub fn loadDriver(driverPackPath: &PathBuf, indexPath: Option<PathBuf>, driveCla
             indexPath = driversPath.join(&indexPath);
         }
         // 解析索引文件
-        infInfoList = match getIndexData(&indexPath) {
+        infInfoList = match parsingIndexData(&indexPath) {
             Ok(infInfoList) => infInfoList,
             Err(_) => {
                 writeConsole(ConsoleType::Err, "Index file parsing failed");
@@ -63,7 +63,9 @@ pub fn loadDriver(driverPackPath: &PathBuf, indexPath: Option<PathBuf>, driveCla
         }
         // 解析INF文件
         for item in infList.iter() {
-            infInfoList.push(InfInfo::parsingInfFile(&driversPath, item).unwrap());
+            if let Ok(InfInfo) = InfInfo::parsingInfFile(&driversPath, item) {
+                infInfoList.push(InfInfo)
+            }
         }
         // println!("{:#?}", infInfoList);
     }
@@ -81,7 +83,7 @@ pub fn loadDriver(driverPackPath: &PathBuf, indexPath: Option<PathBuf>, driveCla
 
         // 遍历匹配的驱动
         for infInfoItem in infInfo {
-            writeConsole(ConsoleType::Info, &*format!("Matched to the driver: {}", &infInfoItem.Inf));
+            writeConsole(ConsoleType::Info, &*format!("Matched to the device: \"{}\", driver: {}", hardware.Name, &infInfoItem.Inf));
 
             // 获取解压路径（相对于解压所有inf文件的路径）
             let extractPath = &infInfoItem.Path;

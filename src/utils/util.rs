@@ -35,7 +35,8 @@ pub fn getFileList(path: &PathBuf, fileType: &str) -> Result<Vec<PathBuf>, Box<d
         require_literal_leading_dot: false,
     })?;
     for item in srerch {
-        fileList.push(PathBuf::from(item.unwrap()));
+        let path = PathBuf::from(&item.unwrap());
+        if path.is_file() { fileList.push(path); }
     }
     Ok(fileList)
 }

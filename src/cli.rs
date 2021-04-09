@@ -46,7 +46,6 @@ pub fn cli() -> App<'static, 'static> {
                 .index(1))
             .arg(Arg::with_name(INDEXATH)
                 .value_name(INDEXATH)
-                .required(true)
                 .index(2)
                 .help("save index file path"))
         )
@@ -108,7 +107,14 @@ pub fn matches(matches: ArgMatches<'_>) {
     // 创建索引
     if let Some(matches) = matches.subcommand_matches("create-index") {
         let driverPath = PathBuf::from(matches.value_of(DRIVEPATH).unwrap());
-        let indexPath = PathBuf::from(matches.value_of(INDEXATH).unwrap());
+        let indexPath = if matches.is_present(INDEXATH) {
+            PathBuf::from(matches.value_of(INDEXATH).unwrap())
+        } else {
+            // 没有指定索引文件，使用默认索引文件名
+            let indexName = format!("{}.index", driverPath.file_stem().unwrap().to_str().unwrap());
+            PathBuf::from(driverPath.parent().unwrap().join(indexName))
+        };
+
         subCommand::create_index::createIndex(&driverPath, &indexPath);
     }
 

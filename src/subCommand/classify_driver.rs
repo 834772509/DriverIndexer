@@ -4,7 +4,6 @@ use std::fs;
 use crate::utils::console::{writeConsole, ConsoleType};
 
 pub fn classify_driver(driverPath: &PathBuf) {
-
     // 遍历INF文件
     let infList = getFileList(driverPath, "*.inf").unwrap();
     for infFile in infList.iter() {

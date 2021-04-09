@@ -1,5 +1,6 @@
 // 禁用变量命名警告
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 // 禁用未使用代码警告
 #![allow(dead_code)]
 
@@ -44,8 +45,6 @@ async fn main() -> () {
     cli::matches(matches);
     // 清除临时目录
     if TEMP_PATH.exists() {
-        if let Err(_e) = remove_dir_all(&*TEMP_PATH) {
-            writeConsole(ConsoleType::Err, &*format!("Temporary directory deletion failed"));
-        }
+        if let Err(_e) = remove_dir_all(&*TEMP_PATH) { writeConsole(ConsoleType::Err, &*format!("Temporary directory deletion failed")); }
     }
 }
