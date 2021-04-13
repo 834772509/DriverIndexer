@@ -4,13 +4,13 @@
 // 禁用未使用代码警告
 #![allow(dead_code)]
 
-
+#[macro_use]
+mod macros;
+mod i18n;
 mod subCommand;
 mod utils;
-mod i18n;
-
-mod test;
 mod cli;
+mod test;
 
 use std::path::{PathBuf};
 use rust_embed::RustEmbed;
@@ -36,15 +36,13 @@ extern crate lazy_static;
 lazy_static! {
     pub static ref TEMP_PATH: PathBuf = PathBuf::from(env::var("temp").unwrap()).join("DriverIndexer");
     pub static ref LOG_PATH: PathBuf = PathBuf::from(env::var("SYSTEMDRIVE").unwrap()).join(r"\Users\Log.txt");
-    // pub static ref LOG_PATH: PathBuf = PathBuf::from(env::var("USERPROFILE").unwrap()).join(r"Desktop\Log.txt");
 }
 
-#[tokio::main]
-async fn main() -> () {
+fn main() {
     let matches = cli::cli().get_matches();
     cli::matches(matches);
     // 清除临时目录
     if TEMP_PATH.exists() {
         if let Err(_e) = remove_dir_all(&*TEMP_PATH) { writeConsole(ConsoleType::Err, &*format!("Temporary directory deletion failed")); }
-    }
+    };
 }

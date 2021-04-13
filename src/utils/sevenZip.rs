@@ -1,7 +1,5 @@
 use std::process::{Command};
 use std::path::PathBuf;
-use encoding::all::GBK;
-use encoding::{DecoderTrap, Encoding};
 use std::error::Error;
 use std::fs;
 use crate::utils::util::writeEmbedFile;
@@ -38,8 +36,8 @@ impl Zip7z {
             .arg("-aos")
             .arg(format!("-o{}", outPath.to_str().unwrap()))
             .output()?;
-        let outContent = GBK.decode(&*output.stdout, DecoderTrap::Strict)?;
-        if !outContent.contains("No files to process") {
+        let content = String::from_utf8_lossy(&output.stdout);
+        if !content.contains("No files to process") {
             Ok(true)
         } else {
             Ok(false)
@@ -60,7 +58,7 @@ impl Zip7z {
             .arg("-aos")
             .arg(format!("-o{}", outPath.to_str().unwrap()))
             .output()?;
-        let outContent = GBK.decode(&*output.stdout, DecoderTrap::Strict)?;
+        let outContent = String::from_utf8_lossy(&output.stdout);
         if outContent.contains("Everything is Ok") {
             Ok(true)
         } else {
@@ -83,8 +81,8 @@ impl Zip7z {
             .arg("-aos")
             .arg(format!("-o{}", outPath.to_str().unwrap()))
             .output()?;
-        let outContent = GBK.decode(&*output.stdout, DecoderTrap::Strict)?;
-        if !outContent.contains("No files to process") {
+        let content = String::from_utf8_lossy(&output.stdout);
+        if !content.contains("No files to process") {
             Ok(true)
         } else {
             Ok(false)

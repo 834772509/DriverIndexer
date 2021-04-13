@@ -4,11 +4,14 @@ mod Test {
     use crate::cli::isValidPathIncludeWildcard;
     use crate::utils::devcon::Devcon;
     use std::fs::File;
+    use crate::utils::util::compareVersiopn;
+    use std::error::Error;
+    use crate::i18n::getLocaleText;
 
     // 文件解压测试
     #[test]
     fn unzipTest() {
-        use crate::utils::Zip7z::Zip7z;
+        use crate::utils::sevenZip::Zip7z;
 
         let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\USB无线网卡驱动.zip");
         let outPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\outPath");
@@ -33,9 +36,32 @@ mod Test {
     // 多国语言支持
     #[test]
     fn Language() {
-        // let zh = Language_zh_CN {};
-        // let lange = Language::new();
-        // println!("{:?}", lange.getContent(Language_zh_CN::SUCCESS));
+        unsafe {
+            let langID = winapi::um::winnls::GetUserDefaultUILanguage();
+            // 2052为简体中文
+            println!("{:?}", langID);
+        }
+
+        use unic_langid::{LanguageIdentifier, langid};
+        use fluent_templates::{Loader, static_loader};
+
+        const US_ENGLISH: LanguageIdentifier = langid!("en-US");
+        const ZH_CHINEXE: LanguageIdentifier = langid!("zh-CN");
+
+        static_loader! {
+            static LOCALES = {
+                locales: "./src/i18n",
+                fallback_language: "en-US",
+            };
+        }
+
+        assert_eq!("Hello World!", LOCALES.lookup(&US_ENGLISH, "hello-world"));
+        assert_eq!("你好，世界!", LOCALES.lookup(&ZH_CHINEXE, "hello-world"));
+
+        println!("{}", LOCALES.lookup(&ZH_CHINEXE, "hello-world"));
+
+        // println!("{}", getLocaleText("hello-world"));
+        // println!("{}", getLocaleText("greeting", Some(hash_map!("name".to_string() => "Alice".into()))));
     }
 
     // INF解析测试
@@ -78,15 +104,32 @@ mod Test {
 
         Devcon::new().unwrap().removeDevice(r"USB\VID_0BDA&PID_B711&REV_0200").unwrap();
 
-        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\net");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
+        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
         let infList = getFileList(&basePath, "*.inf").unwrap();
 
         let mut infInfoList: Vec<InfInfo> = Vec::new();
         for item in infList.iter() {
             infInfoList.push(InfInfo::parsingInfFile(&basePath, item).unwrap());
         }
-        println!("{:?}", getMatchInfo(&infInfoList, Option::from("net"), false).unwrap());
+
+        // infInfoList.sort_by(|b, a| compareVersiopn(&*a.Version, &*b.Version));
+
+        // let mut versionList: Vec<String> = Vec::new();
+        // for item in infInfoList {
+        //     println!("{:?}", item);
+        // versionList.push(item.Version);
+        // }
+        // versionList.sort_by(|a, b| compareVersiopn(a, b));
+        // println!("{:?}", versionList);
+
+        println!("{:#?}", getMatchInfo(&infInfoList, None));
+    }
+
+    // 版本号对比测试
+    #[test]
+    fn versionMatches() {
+        println!("{:?}", compareVersiopn("1.0", "2.0"));
     }
 
     // 驱动加载测试
@@ -103,7 +146,7 @@ mod Test {
 
         let index = None;
         // let index = Some(PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.json"));
-        loadDriver(&basePath, index, None, false);
+        loadDriver(&basePath, index, None);
     }
 
     // 驱动整理测试
@@ -200,9 +243,9 @@ mod Test {
     // 异步多线程测试
     #[test]
     fn asyncTest() {
-        use tokio::task;
-
-        task::spawn(task());
+        // use tokio::task;
+        //
+        // task::spawn(task());
 
         println!("==============");
     }

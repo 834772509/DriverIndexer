@@ -8,6 +8,7 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use crate::{Asset};
 use glob::{MatchOptions};
+use std::cmp::Ordering;
 
 /// 写到文件
 pub fn writeEmbedFile(filePath: &str, outFilePath: &PathBuf) -> Result<(), Box<dyn Error>> {
@@ -116,4 +117,23 @@ pub fn getStringCenter(content: &String, start: &str, end: &str) -> Result<Strin
 pub fn getStringRight(content: &String, left: &str) -> Result<String, Box<dyn Error>> {
     let startSize = content.find(left).ok_or("发生错误-查找左边位置失败".to_owned())?;
     Ok((&content[startSize + left.len()..]).to_string())
+}
+
+/// 比较版本号大小
+pub fn compareVersiopn(version1: &str, version2: &str) -> Ordering {
+    let nums1: Vec<&str> = version1.split('.').collect();
+    let nums2: Vec<&str> = version2.split('.').collect();
+    let n1 = nums1.len();
+    let n2 = nums2.len();
+
+    // 比较版本
+    for i in 0..std::cmp::max(n1, n2) {
+        let i1 = if i < n1 { nums1[i].parse::<i32>().unwrap() } else { 0 };
+        let i2 = if i < n2 { nums2[i].parse::<i32>().unwrap() } else { 0 };
+        if i1 != i2 {
+            return if i1 > i2 { Ordering::Greater } else { Ordering::Less };
+        }
+    }
+    // 版本相等
+    return Ordering::Equal;
 }

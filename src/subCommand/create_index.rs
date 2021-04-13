@@ -5,14 +5,17 @@ use encoding::{DecoderTrap};
 use regex::{Regex, RegexBuilder};
 use std::fs::File;
 use std::io::Read;
-use crate::utils::util::{getFileList, getStringCenter};
+use crate::utils::util::{getFileList, getStringCenter, compareVersiopn};
 use crate::utils::console::{writeConsole, ConsoleType};
 use serde::{Serialize, Deserialize};
 use chardet::{detect, charset2encoding};
 use encoding::label::encoding_from_whatwg_label;
 use crate::utils::devcon::{HwID, Devcon};
 use crate::TEMP_PATH;
-use crate::utils::Zip7z::Zip7z;
+use crate::utils::sevenZip::Zip7z;
+use crate::i18n::getLocaleText;
+use std::collections::HashMap;
+use fluent_templates::fluent_bundle::FluentValue;
 
 /// INF驱动信息
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,11 +44,11 @@ impl InfInfo {
         // let regExpression = [r"PCI\\.*?&.*?&[^; \f\n\r\t\v]+", r"USB\\.*?&[^; \f\n\r\t\v]+", ];
         lazy_static! {
             // 所有类别取自 [HKLM\SYSTEM\ControlSet001\Enum]
-            static ref driverType: [&'static str; 22] = ["ACPI", "ACPI_HAL", "BTH", "BTHENUM", "BTHHFENUM", "DISPLAY", "HDAUDIO", "HID", "HTREE", "PCI", "ROOT", "SCSI", "SD", "STORAGE", "SW", "SWD", "TERMINPUT_BUS", "TS_USB_HUB_Enumerator", "UEFI", "UMB", "USB", "USBSTOR"];
+            static ref DRIVERTYPE: [&'static str; 22] = ["ACPI", "ACPI_HAL", "BTH", "BTHENUM", "BTHHFENUM", "DISPLAY", "HDAUDIO", "HID", "HTREE", "PCI", "ROOT", "SCSI", "SD", "STORAGE", "SW", "SWD", "TERMINPUT_BUS", "TS_USB_HUB_Enumerator", "UEFI", "UMB", "USB", "USBSTOR"];
             // 驱动ID匹配正则表达式
-            static ref regExpression: Vec<String> = driverType.iter().map(|&item| format!(r",{}\\[^,; \f\n\r\t\v]+", item)).collect();
+            static ref REGEXPRESSION: Vec<String> = DRIVERTYPE.iter().map(|&item| format!(r",{}\\[^,; \f\n\r\t\v]+", item)).collect();
             // 编译正则表达式（确保正则表达式只被编译一次）
-            static ref regExpressionList: Vec<Regex> = regExpression.iter().map(|item| RegexBuilder::new(item).case_insensitive(true).build().unwrap()).collect();
+            static ref REGEXPRESSIONLIST: Vec<Regex> = REGEXPRESSION.iter().map(|item| RegexBuilder::new(item).case_insensitive(true).build().unwrap()).collect();
         }
 
         // 读取INF文件
@@ -64,7 +67,7 @@ impl InfInfo {
         let mut idList: Vec<String> = Vec::new();
 
         // 遍历正则表达式
-        for re in regExpressionList.iter() {
+        for re in REGEXPRESSIONLIST.iter() {
             // 匹配正则表达式
             let hwIdList: Vec<_> = re.find_iter(&*infContent).collect();
             for id in hwIdList {
@@ -127,7 +130,7 @@ impl InfInfo {
 }
 
 pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
-    writeConsole(ConsoleType::Info, "Processing, please wait……");
+    writeConsole(ConsoleType::Info, &*getLocaleText("Processing", None));
 
     let zip = Zip7z::new().unwrap();
 
@@ -155,34 +158,39 @@ pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
     }
 
     let mut infInfoList: Vec<InfInfo> = Vec::new();
-    let mut successCount = 0;
-    let mut ErrorCount = 0;
-    let mut blankCount = 0;
+
+    let (mut successCount, mut ErrorCount, mut blankCount) = (0, 0, 0);
 
     // 遍历INF文件
     for item in infList.iter() {
+        let arg = hash_map!("path".to_string() => item.to_str().unwrap().into());
         if let Ok(currentInfo) = InfInfo::parsingInfFile(&infParentPath, item) {
             if currentInfo.DriverList.len() == 0 {
                 blankCount += 1;
-                writeConsole(ConsoleType::Warning, &*format!("The hardware id in this file is not detected: {}", &item.to_str().unwrap()));
+                writeConsole(ConsoleType::Warning, &*getLocaleText("no-hardware", Some(arg)));
                 continue;
             }
             successCount += 1;
             infInfoList.push(currentInfo);
         } else {
             ErrorCount += 1;
-            writeConsole(ConsoleType::Err, &*format!("INF parsing error: {}", &item.to_str().unwrap()));
+            writeConsole(ConsoleType::Err, &*getLocaleText("inf-parsing-err", Some(arg)));
         }
     };
 
     if let Err(_e) = saveDataFromJson(&infInfoList, &indexPath) {
-        writeConsole(ConsoleType::Err, "Failed to save index file");
+        writeConsole(ConsoleType::Err, &*getLocaleText("index-save-failed", None));
         return;
     }
-    writeConsole(ConsoleType::Info, &*format!("Total {} items，Processed {} items，{} items failed to process，{} items may not have hardware id information", &infList.len(), &successCount, &ErrorCount, &blankCount));
-    writeConsole(ConsoleType::Info, &*format!("The drive index is saved in \"{}\"", &indexPath.to_str().unwrap()));
+    let arg: HashMap<String, FluentValue> = hash_map!(
+        "total".to_string() => infList.len().into(),
+        "success".to_string() => successCount.to_string().into(),
+        "error".to_string() => ErrorCount.to_string().into(),
+        "blankCount".to_string() => blankCount.to_string().into(),
+    );
+    writeConsole(ConsoleType::Info, &*getLocaleText("total-info", Some(arg)));
+    writeConsole(ConsoleType::Success, &*getLocaleText("saveInfo", Some(hash_map!("path".to_string() => indexPath.to_str().unwrap().into()))));
 }
-
 
 /// 保存inf数据（通过json）
 fn saveDataFromJson(Data: &Vec<InfInfo>, savaPath: &PathBuf) -> Result<(), Box<dyn Error>> {
@@ -204,7 +212,7 @@ pub fn parsingIndexData(indexPath: &PathBuf) -> Result<Vec<InfInfo>, Box<dyn Err
 /// 获取匹配驱动的信息
 /// 参数1: INF驱动信息列表
 /// 参数2: 是否为精准匹配（不匹配兼容ID）
-pub fn getMatchInfo(infInfoList: &Vec<InfInfo>, driveClass: Option<&str>, isAccurateMatch: bool) -> Result<Vec<(HwID, Vec<InfInfo>)>, Box<dyn Error>> {
+pub fn getMatchInfo(infInfoList: &Vec<InfInfo>, driveClass: Option<&str>) -> Result<Vec<(HwID, Vec<InfInfo>)>, Box<dyn Error>> {
     let devcon = Devcon::new()?;
     // 扫描以发现新的硬件
     devcon.rescan()?;
@@ -214,39 +222,50 @@ pub fn getMatchInfo(infInfoList: &Vec<InfInfo>, driveClass: Option<&str>, isAccu
     // 匹配驱动信息
     let mut macthInfo: Vec<(HwID, Vec<InfInfo>)> = Vec::new();
 
-    // 提示：循环次数少的放在外层，减少内层变量的操作次数
-    // 提示：一个设备信息 对应 多个匹配驱动信息
+    // 提示：
+    // 循环次数少的放在外层，减少内层变量的操作次数
+    // 一个设备信息 对应 多个匹配驱动信息
+
+    // 规则：
+    // 1. 专用驱动优先级大于公版
+    // 2. 高版本优先级大于低版本
 
     // 遍历有问题的硬件id信息
     for idInfo in idInfo.iter() {
+        // 闭包函数-匹配
+        let matchFn = |haID: &String| {
+            let mut macthList: Vec<InfInfo> = Vec::new();
+            // 遍历INF信息列表
+            for infInfoItem in infInfoList.iter() {
+                let mut matchInfInfo = InfInfo {
+                    DriverList: vec![],
+                    ..infInfoItem.clone()
+                };
+                // 遍历INF中的硬件id
+                for infID in infInfoItem.DriverList.iter() {
+                    if haID.to_lowercase() == infID.to_lowercase() {
+                        // 如果指定了安装驱动类别 且 不符合则跳过此INF
+                        if driveClass.is_some() && infInfoItem.Class.to_lowercase() != driveClass.unwrap().to_string().to_lowercase() { break; }
+                        matchInfInfo.DriverList.push(infID.to_string());
+                    }
+                }
+                if !matchInfInfo.DriverList.is_empty() { macthList.push(matchInfInfo.clone()); }
+            }
+            // 排序：高版本优先级大于低版本
+            macthList.sort_by(|b, a| compareVersiopn(&*a.Version, &*b.Version));
+            return macthList;
+        };
+
         // 创建匹配信息列表
         let mut macthList: Vec<InfInfo> = Vec::new();
 
-        let mut matchFn = |haID: &String| {
-            // 遍历inf列表
-            for InfInfo in infInfoList {
-                // 遍历INF中的硬件id
-                for infID in InfInfo.DriverList.iter() {
-                    if haID.to_lowercase() == infID.to_lowercase() {
-                        // 如果指定了安装驱动类别 且 不符合则跳过此INF
-                        if driveClass.is_some() && InfInfo.Class.to_lowercase() != driveClass.unwrap().to_string().to_lowercase() {
-                            break;
-                        }
-                        macthList.push(InfInfo.clone());
-                    }
-                }
-            }
-        };
-
         // 优先对比硬件id
-        for haID in idInfo.HardwareIDs.iter() { matchFn(haID); }
+        for haID in idInfo.HardwareIDs.iter() { macthList.append(&mut matchFn(haID)); }
 
-        if !isAccurateMatch {
-            // 对比兼容id
-            for haID in idInfo.CompatibleIDs.iter() { matchFn(haID); }
-        }
+        // 对比兼容id
+        for haID in idInfo.CompatibleIDs.iter() { macthList.append(&mut matchFn(haID)); }
 
-        // 没有匹配到该设备的驱动信息，直接匹配下一个设备
+        // 没有匹配到该设备的驱动信息，则匹配下一个设备
         if macthList.len() == 0 { continue; }
 
         macthInfo.push((idInfo.clone(), macthList));

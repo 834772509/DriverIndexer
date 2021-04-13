@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use crate::utils::util::{getFileList};
 use std::fs;
 use crate::utils::console::{writeConsole, ConsoleType};
+use crate::i18n::getLocaleText;
 
 pub fn classify_driver(driverPath: &PathBuf) {
     // 遍历INF文件
@@ -29,5 +30,5 @@ pub fn classify_driver(driverPath: &PathBuf) {
     //         .output().unwrap();
     // }
 
-    writeConsole(ConsoleType::Success, "Drivers finishing is complete");
+    writeConsole(ConsoleType::Success, &*getLocaleText("Drivers-finishing-complete", None));
 }

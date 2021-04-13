@@ -1,4 +1,4 @@
 pub mod util;
-pub mod Zip7z;
+pub mod sevenZip;
 pub mod console;
 pub mod devcon;

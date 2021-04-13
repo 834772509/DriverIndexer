@@ -1,8 +1,6 @@
 use std::error::Error;
 use crate::utils::util::{writeEmbedFile, getStringCenter, getStringRight, getStringLeft};
 use std::process::Command;
-use encoding::{DecoderTrap, Encoding};
-use encoding::all::GBK;
 use std::path::PathBuf;
 use std::{fs};
 use crate::TEMP_PATH;
@@ -43,7 +41,7 @@ impl Devcon {
             .arg("hwids")
             .arg("*")
             .output()?;
-        let content = GBK.decode(&*output.stdout, DecoderTrap::Ignore)?;
+        let content = String::from_utf8_lossy(&output.stdout);
 
         // 将 Name 与 Hardware IDs 分离
         let content = content.replace("     Hardware IDs:", &*format!("\r\n    Hardware IDs:"));
@@ -107,7 +105,7 @@ impl Devcon {
             .arg("status")
             .arg("*")
             .output()?;
-        let content = GBK.decode(&*output.stdout, DecoderTrap::Ignore)?;
+        let content = String::from_utf8_lossy(&output.stdout);
 
         const DELIMITER: &str = "|";
 
@@ -156,7 +154,7 @@ impl Devcon {
             .arg(infPath)
             .arg(hwid)
             .output()?;
-        let content = GBK.decode(&*output.stdout, DecoderTrap::Ignore)?;
+        let content = String::from_utf8_lossy(&output.stdout);
         Ok(content.contains("successfully"))
     }
 
@@ -165,7 +163,7 @@ impl Devcon {
         let output = Command::new(&self.devconPath)
             .arg("rescan")
             .output()?;
-        let content = GBK.decode(&*output.stdout, DecoderTrap::Ignore)?;
+        let content = String::from_utf8_lossy(&output.stdout);
         Ok(content.contains("completed"))
     }
 
@@ -175,7 +173,7 @@ impl Devcon {
             .arg("remove")
             .arg(id)
             .output()?;
-        let content = GBK.decode(&*output.stdout, DecoderTrap::Ignore)?;
+        let content = String::from_utf8_lossy(&output.stdout);
         Ok(content.contains("were removed"))
     }
 }

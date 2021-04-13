@@ -32,11 +32,22 @@ It has been tested to install the driver `Devcon` faster than `Dpinst`, `Pnputi`
 
 ### Where can I get the driver package?
 
-We also advocate collecting the driver package by ourselves, and if necessary, you can also extract the driver package in the current driver software by yourself (this type of driver package is copyright-free)
+> We recommend downloading and collecting driver packages by ourselves. If necessary, you can also extract the driver packages in each driver software by yourself (generally, such driver packages are copyright-free)
+
+The following are the recommended downloading websites for the driver package (all free and without encryption)
+
+- [DriverPack](https://drp.su/en/foradmin)
+- [3DP](https://www.3dpchip.com/3dpchip/3dp/net_down.php)
 
 ## Software Architecture
 
 Use `Rust` to develop, call `Devcon.exe` to obtain the hardware id and install the driver.
+
+### Drive matching rules
+
+1. Only match devices with **no driver installed**
+2. The priority of the dedicated driver is greater than that of the public version
+3. The higher version has priority over the lower version
 
 ## Instructions for use
 

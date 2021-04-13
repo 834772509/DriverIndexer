@@ -9,25 +9,26 @@ use std::env;
 
 const DRIVEPATH: &str = "DrivePath";
 const INDEXATH: &str = "IndexPath";
-const ACCURATEMATCH: &str = "AccurateMatch";
 const DRIVECLASS: &str = "DriveClass";
 const PASSWORD: &str = "Password";
 
 pub fn cli() -> App<'static, 'static> {
+    // getLocaleText("on-debug", None).as_str()
+
     App::new("DriverIndexer")
         .setting(AppSettings::ArgRequiredElseHelp)
         .global_setting(AppSettings::UnifiedHelpMessage)
         .version(crate_version!())
 
-        // .help_message("打印帮助信息")
-        // .version_message("打印版本信息")
+        //     .help_message("打印帮助信息")
+        //     .version_message("打印版本信息")
         //     .template(r"    {bin}
         // 用法：
         //     {usage}
         // 命令：
-        // {subcommands}
+        //     {subcommands}
         // 选项：
-        // {flags}")
+        //     {flags}")
 
         // Debug 模式
         .arg(Arg::with_name("debug")
@@ -52,40 +53,34 @@ pub fn cli() -> App<'static, 'static> {
 
         // 加载驱动
         .subcommand(SubCommand::with_name("load-driver")
-            .about("Install the matching driver. Automatically match the driver in the compressed package, decompress and install")
-            // 参数-驱动
-            .arg(Arg::with_name(DRIVEPATH)
-                .value_name(DRIVEPATH)
-                .validator(isValidPathIncludeWildcard)
-                .required(true)
-                .index(1)
-                .help("Compressed package path")
-            )
-            // 参数-索引文件
-            .arg(Arg::with_name(INDEXATH)
-                .value_name(INDEXATH)
-                .index(2))
-            // 选项-驱动类别
-            .arg(Arg::with_name(DRIVECLASS)
-                .short("c")
-                .long(DRIVECLASS)
-                .value_name(DRIVECLASS)
-                .validator(isValidDriverClass)
-                .help("Set the installed driver category")
-            )
-            // 选项-驱动包密码
-            // .arg(Arg::with_name(PASSWORD)
-            //     .short("p")
-            //     .long(PASSWORD)
-            //     .value_name(PASSWORD)
-            //     .help("Set driver package password")
-            // )
-
-            // 选项-精准匹配
-            .arg(Arg::with_name(ACCURATEMATCH)
-                .long(ACCURATEMATCH)
-                .short("a")
-                .help("Only match hardware id, not match compatible id"))
+                        .about("Install the matching driver. Automatically match the driver in the compressed package, decompress and install")
+                        // 参数-驱动
+                        .arg(Arg::with_name(DRIVEPATH)
+                            .value_name(DRIVEPATH)
+                            .validator(isValidPathIncludeWildcard)
+                            .required(true)
+                            .index(1)
+                            .help("Compressed package path")
+                        )
+                        // 参数-索引文件
+                        .arg(Arg::with_name(INDEXATH)
+                            .value_name(INDEXATH)
+                            .index(2))
+                        // 选项-驱动类别
+                        .arg(Arg::with_name(DRIVECLASS)
+                            .short("c")
+                            .long(DRIVECLASS)
+                            .value_name(DRIVECLASS)
+                            .validator(isValidDriverClass)
+                            .help("Set the installed driver category")
+                        )
+                    // 选项-驱动包密码
+                    // .arg(Arg::with_name(PASSWORD)
+                    //     .short("p")
+                    //     .long(PASSWORD)
+                    //     .value_name(PASSWORD)
+                    //     .help("Set driver package password")
+                    // )
         )
 
         // 整理驱动
@@ -154,7 +149,7 @@ pub fn matches(matches: ArgMatches<'_>) {
             // 遍历驱动包
             for drivePathItem in driveList.iter() {
                 let index = indexIter.next().unwrap().clone();
-                subCommand::load_driver::loadDriver(drivePathItem, index, matches.value_of(DRIVECLASS), matches.is_present(ACCURATEMATCH));
+                subCommand::load_driver::loadDriver(drivePathItem, index, matches.value_of(DRIVECLASS));
             }
         } else {
             // 无通配符
@@ -162,7 +157,7 @@ pub fn matches(matches: ArgMatches<'_>) {
                 true => Some(PathBuf::from(matches.value_of(INDEXATH).unwrap())),
                 false => None,
             };
-            subCommand::load_driver::loadDriver(&drivePath, index, matches.value_of(DRIVECLASS), matches.is_present(ACCURATEMATCH));
+            subCommand::load_driver::loadDriver(&drivePath, index, matches.value_of(DRIVECLASS));
         }
     }
 
