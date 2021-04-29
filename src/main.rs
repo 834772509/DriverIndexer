@@ -10,7 +10,12 @@ mod i18n;
 mod subCommand;
 mod utils;
 mod cli;
-mod test;
+
+mod bindings { ::windows::include_bindings!(); }
+
+
+#[cfg(test)]
+mod tests;
 
 use std::path::{PathBuf};
 use rust_embed::RustEmbed;
@@ -18,16 +23,26 @@ use std::{env};
 use remove_dir_all::remove_dir_all;
 use crate::utils::console::{writeConsole, ConsoleType};
 
+
 // 设置静态资源
+
+// x64平台
+#[cfg(target_arch = "x86_64")]
 #[derive(RustEmbed)]
-// #[cfg(target_arch = "x86_64")]
 #[folder = "./assets-x64"]
 pub struct Asset;
 
-// #[derive(RustEmbed)]
-// #[cfg(target_arch = "x86")]
-// #[folder = "./assets-x86"]
-// pub struct Asset;
+// x86平台
+#[cfg(target_arch = "x86")]
+#[derive(RustEmbed)]
+#[folder = "./assets-x86"]
+pub struct Asset;
+
+// ARM平台
+#[cfg(target_arch = "arm")]
+#[derive(RustEmbed)]
+#[folder = "./assets-ARM64"]
+pub struct Asset;
 
 
 // 设置静态变量
@@ -38,9 +53,10 @@ lazy_static! {
     pub static ref LOG_PATH: PathBuf = PathBuf::from(env::var("SYSTEMDRIVE").unwrap()).join(r"\Users\Log.txt");
 }
 
+// #[tokio::main]
 fn main() {
-    let matches = cli::cli().get_matches();
-    cli::matches(matches);
+    let matches = cli::cli::cli().get_matches();
+    cli::matches::matches(matches);
     // 清除临时目录
     if TEMP_PATH.exists() {
         if let Err(_e) = remove_dir_all(&*TEMP_PATH) { writeConsole(ConsoleType::Err, &*format!("Temporary directory deletion failed")); }

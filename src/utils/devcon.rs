@@ -1,12 +1,13 @@
 use std::error::Error;
-use crate::utils::util::{writeEmbedFile, getStringCenter, getStringRight, getStringLeft};
+use crate::utils::util::{writeEmbedFile, StringUtils};
 use std::process::Command;
 use std::path::PathBuf;
 use std::{fs};
 use crate::TEMP_PATH;
 
+
 /// 硬件信息
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq)]
 pub struct HwID {
     /// 设备实例路径
     pub(crate) DeviceInstancePath: String,
@@ -18,7 +19,19 @@ pub struct HwID {
     pub(crate) CompatibleIDs: Vec<String>,
 }
 
+impl PartialEq for HwID {
+    fn eq(&self, other: &Self) -> bool {
+        self.DeviceInstancePath == other.DeviceInstancePath
+    }
 
+    fn ne(&self, other: &Self) -> bool {
+        unimplemented!()
+    }
+}
+
+/// Devcon操作类
+/// # 如何获取Devcon？
+/// [WDK 下载](https://docs.microsoft.com/zh-cn/windows-hardware/drivers/download-the-wdk)
 pub struct Devcon {
     devconPath: PathBuf,
 }
@@ -36,11 +49,16 @@ impl Devcon {
     }
 
     /// 获取真实硬件id信息
-    pub fn getRealIdInfo(&self) -> Result<Vec<HwID>, Box<dyn Error>> {
+    /// #参数
+    /// 1. 驱动类别
+    pub fn getRealIdInfo<T1>(&self, driveClass: T1) -> Result<Vec<HwID>, Box<dyn Error>> where T1: Into<Option<String>>, {
+        let driveClass = driveClass.into();
+        let hwidType = if driveClass.is_some() { format!("={}", &driveClass.unwrap()) } else { "*".to_string() };
         let output = Command::new(&self.devconPath)
             .arg("hwids")
-            .arg("*")
+            .arg(hwidType)
             .output()?;
+
         let content = String::from_utf8_lossy(&output.stdout);
 
         // 将 Name 与 Hardware IDs 分离
@@ -57,39 +75,33 @@ impl Devcon {
         let contentLine = contentLine.replace("  ", "");
         let contentLine = contentLine.replace("\r\n", &*format!("{}\r\n", DELIMITER));
 
-        // let mut realIdList: Vec<String> = Vec::new();
         let mut HwIDList: Vec<HwID> = Vec::new();
         // 通过换行符分割遍历
         for item in contentLine.lines() {
-            // realIdList.push(String::from(item));
 
             // 获取设备实例路径
-            let DeviceInstancePath = getStringLeft(&item.to_string(), DELIMITER).unwrap_or("".to_string());
+            let DeviceInstancePath = item.to_string().getStringLeft(DELIMITER).unwrap_or("".to_string());
 
             // 获取显示名称
-            let name = getStringCenter(&item.to_string(), "Name:", DELIMITER).unwrap_or("".to_string());
+            let name = item.to_string().getStringCenter("Name:", DELIMITER).unwrap_or("".to_string()).trim().to_string();
 
             // 获取硬件id
-            let hardwareIDs = getStringCenter(&item.to_string(), "Hardware IDs:", DELIMITER).unwrap_or("".to_string()).replace(DELIMITER, "");
-            let mut hardwareIDList: Vec<String> = Vec::new();
-            for hardwareIdItem in hardwareIDs.split(SUBDELIMITER) {
-                if hardwareIdItem != "" {
-                    hardwareIDList.push(hardwareIdItem.to_string());
-                }
-            }
+            let hardwareIDs = item.to_string().getStringCenter("Hardware IDs:", DELIMITER).unwrap_or("".to_string()).replace(DELIMITER, "");
+            let hardwareIDList: Vec<String> = hardwareIDs.split(SUBDELIMITER).into_iter()
+                .filter(|&hardwareID| hardwareID != "")
+                .map(|hardwareID| hardwareID.to_string())
+                .collect();
 
             // 获取兼容id
-            let CompatibleIDs = getStringRight(&item.to_string(), "Compatible IDs:").unwrap_or("".to_string()).replace(DELIMITER, "");
-            let mut CompatibleIDList: Vec<String> = Vec::new();
-            for CompatibleIDItem in CompatibleIDs.split(SUBDELIMITER) {
-                if CompatibleIDItem != "" {
-                    CompatibleIDList.push(CompatibleIDItem.to_string());
-                }
-            }
+            let CompatibleIDs = item.to_string().getStringRight("Compatible IDs:").unwrap_or("".to_string()).replace(DELIMITER, "");
+            let CompatibleIDList: Vec<String> = CompatibleIDs.split(SUBDELIMITER).into_iter()
+                .filter(|&CompatibleID| CompatibleID != "")
+                .map(|CompatibleID| CompatibleID.to_string())
+                .collect();
 
             HwIDList.push(HwID {
                 DeviceInstancePath,
-                Name: name.trim().to_string(),
+                Name: name,
                 HardwareIDs: hardwareIDList,
                 CompatibleIDs: CompatibleIDList,
             });
@@ -124,20 +136,21 @@ impl Devcon {
     }
 
     /// 获取有问题的硬件id信息
-    pub fn getProblemIdInfo(&self) -> Result<Vec<HwID>, Box<dyn Error>> {
-        let mut problemIdInfoList: Vec<HwID> = Vec::new();
-
-        // 获取真实硬件id信息
-        let realIdInfo = &self.getRealIdInfo()?;
+    /// # 参数
+    /// 1. 真实硬件id信息
+    pub fn getProblemIdInfo(&self, realIdInfo: Vec<HwID>) -> Result<Vec<HwID>, Box<dyn Error>> {
         // 获取有问题的硬件设备实例路径
         let problemIdList = &self.getProblemDeviceInstancePath()?;
+
+        let mut problemIdInfoList: Vec<HwID> = Vec::new();
 
         // 遍历有问题的硬件设备实例路径
         for problemId in problemIdList {
             // 遍历获取真实硬件id信息
-            for idInfo in realIdInfo.iter() {
-                if problemId.to_lowercase() == idInfo.DeviceInstancePath.to_lowercase() {
-                    problemIdInfoList.push(idInfo.clone());
+            // let problemIdInfoList: Vec<HwID> = realIdInfo.into_iter().filter(|idInfo| problemId.to_lowercase() == idInfo.DeviceInstancePath.to_lowercase()).collect();
+            for realIdItem in realIdInfo.iter() {
+                if problemId.to_lowercase() == realIdItem.DeviceInstancePath.to_lowercase() {
+                    problemIdInfoList.push(realIdItem.clone());
                     break;
                 }
             }
@@ -146,7 +159,9 @@ impl Devcon {
     }
 
     /// 加载驱动
-    /// 注意hwid不是设备实例路径
+    /// # 参数
+    /// 1. INF文件路径
+    /// 2. 硬件ID（不是设备实例路径）
     pub fn loadDriver(&self, infPath: &PathBuf, hwid: &String) -> Result<bool, Box<dyn Error>> {
         // 不要用 install 命令
         let output = Command::new(&self.devconPath)
@@ -168,6 +183,8 @@ impl Devcon {
     }
 
     /// 卸载设备
+    /// # 参数
+    /// 1. 硬件ID
     pub fn removeDevice(&self, id: &str) -> Result<bool, Box<dyn Error>> {
         let output = Command::new(&self.devconPath)
             .arg("remove")

@@ -14,14 +14,78 @@ saveInfo = The drive index is saved in { $path }
 # load-driver
 load-driver-package = Load driver package: { $path }
 unzip-index-failed = Failed to unzip the index file, please confirm whether the index file exists in the compressed package
-index-parsing-failed = Index file parsing failed
+index-parsing-failed = Index file parsing failed, Please regenerate the index file
 no-driver-package = No driver detected in the driver package
 no-found-driver-currently = The driver that currently needs to be matched is not found
-match-install = Matched to the device: [Name: "{ $device }"] [driver: { $driver }, Version: { $version }]
-driver-unzip-failed = Driver unzip failed, please make sure that the compressed package contains a layer of directories
+install-success =
+ Device: {$class}: { $deviceName }
+            HardwareID: { $deviceID }
+            Drive: { $driver }, Version: { $version }
+driver-unzip-failed = Driver unzip failed
 driver-unzip-success = Driver unzip successfully
 driver-install-failed = Driver installation failed
 driver-install-success = Driver installed successfully
 
 # classify-driver
 Drivers-finishing-complete = Drivers finishing complete
+
+# Drive category
+# ADAPTER = ADAPTER
+# BATTERY = BATTERY
+# CDROM = CDROM
+# COMPUTER = COMPUTER
+# DECODER = DECODER
+# DISKDRIVE = DISKDRIVE
+# DISPLAY = DISPLAY
+# FDC = FDC
+# FLOPPYDISK = FLOPPYDISK
+# HDC = HDC
+# INFRARED = INFRARED
+# KEYBOARD = KEYBOARD
+# LEGACYDRIVER = LEGACYDRIVER
+# MEDIA = MEDIA
+# MODEM = MODEM
+# MONITOR = MONITOR
+# MOUSE = MOUSE
+# NET = NET
+# PORTS = PORTS
+# PRINTER = PRINTER
+# SCSIADAPTER = SCSIADAPTER
+# SMARTCARDREADER = SMARTCARDREADER
+# MTD = MTD
+# SYSTEM = SYSTEM
+# BLUETOOTH = BLUETOOTH
+# BluetoothAuxiliary = BluetoothAuxiliary
+# PROCESSOR = PROCESSOR
+# USB = USB
+# HIDClass = HIDClass
+# Image = Image
+# Volume = Volume
+# APMSUPPORT = APMSUPPORT
+# GPS = GPS
+# MediumChanger(MEDIUM) = MediumChanger(MEDIUM)
+# MultiFunction = MultiFunction
+# MultiPortSerial = MultiPortSerial
+# NetClient = NetClient
+# NetService = NetService
+# NetTrans = NetTrans
+# NODRIVER = NODRIVER
+# PCMCIA = PCMCIA
+# PRINTERUPGRADE = PRINTERUPGRADE
+# TapeDrive = TapeDrive
+# Unknown = Unknown
+# AVC = AVC
+# BiometricDevice(BIOMETRIC) = BiometricDevice(BIOMETRIC)
+# 1394 = 1394
+# DOT4 = DOT4
+# Dot4Print = Dot4Print
+# PnpPrinters = PnpPrinters
+# SBP2 = SBP2
+# 1394DEBUG = 1394DEBUG
+# ENUM1394 = ENUM1394
+# 61883 = 61883
+# SECURITYACCELERATOR = SECURITYACCELERATOR
+# VolumeSnapshot = VolumeSnapshot
+# WCEUSBS = WCEUSBS
+# FSFILTER = FSFILTER
+# INFINIBAND = INFINIBAND

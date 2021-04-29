@@ -1,8 +1,7 @@
-// use crate::LANG_ID;
-
+use std::collections::HashMap;
+use crate::bindings::Windows;
 use unic_langid::{LanguageIdentifier, langid};
 use fluent_templates::{Loader, static_loader};
-use std::collections::HashMap;
 use fluent_templates::fluent_bundle::FluentValue;
 
 // 多国语言支持
@@ -18,10 +17,9 @@ static_loader! {
     };
 }
 
-// pub fn getLocaleText<args>(id: &str, args: args) -> String where args: Into<Option<HashMap<String, FluentValue>>> {
-pub fn getLocaleText(id: &str, args: Option<HashMap<String, FluentValue>>) -> String {
+pub fn getLocaleText(id: &str, args: Option<&HashMap<String, FluentValue>>) -> String {
     lazy_static! {
-        pub static ref LANG_ID: u16 = unsafe { return winapi::um::winnls::GetUserDefaultUILanguage() };
+        pub static ref LANG_ID: u16 = unsafe { return Windows::Win32::Intl::GetUserDefaultUILanguage() };
     }
     let lang = if LANG_ID.eq(&2052) { ZH_CHINEXE } else { US_ENGLISH };
     if !args.is_some() {

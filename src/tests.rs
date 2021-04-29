@@ -1,22 +1,22 @@
-#[cfg(test)]
-mod Test {
+#![allow(unused_imports)]
+
+mod Tests {
     use std::path::{PathBuf};
     use crate::cli::isValidPathIncludeWildcard;
     use crate::utils::devcon::Devcon;
-    use std::fs::File;
     use crate::utils::util::compareVersiopn;
-    use std::error::Error;
-    use crate::i18n::getLocaleText;
+    use std::{thread, mem};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     // 文件解压测试
     #[test]
     fn unzipTest() {
-        use crate::utils::sevenZip::Zip7z;
+        use crate::utils::sevenZip::sevenZip;
 
         let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\USB无线网卡驱动.zip");
         let outPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\outPath");
 
-        let zip = Zip7z::new().unwrap();
+        let zip = sevenZip::new().unwrap();
         println!("{:?}", zip.extractFilesFromPath(&basePath, "", &outPath));
     }
 
@@ -26,7 +26,7 @@ mod Test {
         use crate::utils::util::getFileList;
 
         // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop");
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\新建文件夹");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
 
         let fileList = getFileList(&basePath, "*.inf").unwrap();
         println!("{:?}", fileList);
@@ -36,11 +36,17 @@ mod Test {
     // 多国语言支持
     #[test]
     fn Language() {
+        use crate::i18n::getLocaleText;
+        use crate::bindings::Windows;
+
         unsafe {
-            let langID = winapi::um::winnls::GetUserDefaultUILanguage();
+            // let langID = winapi::um::winnls::GetUserDefaultUILanguage();
+            let langID = Windows::Win32::Intl::GetUserDefaultUILanguage();
+
             // 2052为简体中文
             println!("{:?}", langID);
         }
+        return;
 
         use unic_langid::{LanguageIdentifier, langid};
         use fluent_templates::{Loader, static_loader};
@@ -70,8 +76,9 @@ mod Test {
         use crate::subCommand::create_index::InfInfo;
 
         // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\Net");
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop");
-        let infPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\SN9C128.inf");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
+        let infPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动\netrtl8188gu.inf");
+
         println!("{:#?}", InfInfo::parsingInfFile(&basePath, &infPath).unwrap());
     }
 
@@ -100,36 +107,33 @@ mod Test {
     fn matchDriverTest() {
         use crate::utils::util::getFileList;
         use crate::subCommand::create_index::InfInfo;
-        use crate::subCommand::create_index::getMatchInfo;
+        use crate::subCommand::load_driver::getMatchInfo;
 
         Devcon::new().unwrap().removeDevice(r"USB\VID_0BDA&PID_B711&REV_0200").unwrap();
 
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
-        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
+        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
+
         let infList = getFileList(&basePath, "*.inf").unwrap();
+        let infInfoList = InfInfo::parsingInfFileList(&basePath, &infList);
 
-        let mut infInfoList: Vec<InfInfo> = Vec::new();
-        for item in infList.iter() {
-            infInfoList.push(InfInfo::parsingInfFile(&basePath, item).unwrap());
-        }
+        let devcon = Devcon::new().unwrap();
 
-        // infInfoList.sort_by(|b, a| compareVersiopn(&*a.Version, &*b.Version));
+        // 扫描以发现新的硬件
+        devcon.rescan().unwrap();
+        // 获取真实硬件id信息
+        let hwIdList = devcon.getRealIdInfo(None).unwrap();
+        // 获取有问题的硬件id信息
+        // let hwIdList = devcon.getProblemIdInfo(hwIdList).unwrap();
+        // println!("{:#?}", hwIdList);
 
-        // let mut versionList: Vec<String> = Vec::new();
-        // for item in infInfoList {
-        //     println!("{:?}", item);
-        // versionList.push(item.Version);
-        // }
-        // versionList.sort_by(|a, b| compareVersiopn(a, b));
-        // println!("{:?}", versionList);
+        // 匹配硬件id
+        let time1 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let matchInfo = getMatchInfo(hwIdList, &infInfoList).unwrap();
+        let time2 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
-        println!("{:#?}", getMatchInfo(&infInfoList, None));
-    }
-
-    // 版本号对比测试
-    #[test]
-    fn versionMatches() {
-        println!("{:?}", compareVersiopn("1.0", "2.0"));
+        println!("{:#?}", matchInfo);
+        println!("匹配耗时：{:?}", time2 - time1);
     }
 
     // 驱动加载测试
@@ -140,13 +144,13 @@ mod Test {
 
         Devcon::new().unwrap().removeDevice(r"USB\VID_0BDA&PID_B711&REV_0200").unwrap();
 
-        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\Network.zip");
-        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.zip");
         // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network");
+        let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.zip");
 
         let index = None;
         // let index = Some(PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.json"));
-        loadDriver(&basePath, index, None);
+
+        loadDriver(&basePath, index, false, None);
     }
 
     // 驱动整理测试
@@ -156,6 +160,12 @@ mod Test {
 
         let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\万能网卡驱动-驱动精灵");
         classify_driver(&basePath);
+    }
+
+    // 版本号对比测试
+    #[test]
+    fn versionMatches() {
+        println!("{:?}", compareVersiopn("1.0", "2.0"));
     }
 
     // 编码测试
@@ -223,7 +233,6 @@ mod Test {
     fn multithreadingTest() {
         use std::thread;
 
-
         // 模拟有20个元素
         let mut list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].iter();
 
@@ -240,17 +249,59 @@ mod Test {
         t1.join().unwrap();
     }
 
-    // 异步多线程测试
+    // 系统位宽判断测试
     #[test]
-    fn asyncTest() {
-        // use tokio::task;
-        //
-        // task::spawn(task());
-
-        println!("==============");
+    fn getSystemBitWidthTest() {
+        match std::mem::size_of::<&char>() {
+            4 => println!("x32"),
+            8 => println!("x64"),
+            _ => {}
+        }
     }
 
-    async fn task() {
-        println!("aaa");
+    // SetupAPI测试
+    #[test]
+    fn setupAPITest() {
+        use crate::utils::setupAPI;
+
+        // unsafe {
+        //     let ClassArray = EnumDeviceClasses();
+        //     for item in ClassArray {
+        //         EnumDevices(item);
+        //     }
+        // }
+        unsafe {
+            setupAPI::getDeviceInfo();
+        }
+    }
+
+    // newdevAPI测试
+    #[test]
+    fn newdevAPITest() {
+        use crate::utils::newdevAPI::updateDriverForPlugAndPlayDevices;
+
+        unsafe {
+            let result = updateDriverForPlugAndPlayDevices(&PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动\netrtl8188gu.inf"), r"USB\VID_0BDA&PID_B711".to_string());
+            println!("{:?}", result);
+        }
+    }
+
+    #[test]
+    fn writeRegTest() {
+        use winreg::RegKey;
+        use winreg::enums::HKEY_LOCAL_MACHINE;
+
+        // 关闭驱动数字验证
+        // HKLM\SYSTEM\Setup\SystemSetupInProgress=#1
+
+        // 恢复驱动数字验证（默认）
+        // HKLM\SYSTEM\Setup\SystemSetupInProgress=#0
+
+        let setup = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"SYSTEM\Setup").unwrap();
+
+        setup.set_value("SystemSetupInProgress", &(1 as u32)).unwrap();
+
+        let value: u32 = setup.get_value("SystemSetupInProgress").unwrap();
+        println!("{:?}", value);
     }
 }

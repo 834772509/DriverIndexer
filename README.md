@@ -38,6 +38,8 @@ The following are the recommended downloading websites for the driver package (a
 
 - [DriverPack](https://drp.su/en/foradmin)
 - [3DP](https://www.3dpchip.com/3dpchip/3dp/net_down.php)
+- [DriverOff](https://driveroff.net/category/dp)
+- [BatPEDriver](http://forum.ru-board.com/topic.cgi?forum=62&topic=24098&start=71&limit=1&m=1#1)
 
 ## Software Architecture
 

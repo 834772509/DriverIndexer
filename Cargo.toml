@@ -1,12 +1,13 @@
 [package]
 name = "DriverIndexer"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Fir"]
 edition = "2018"
 build = "build.rs"
 
 [build-dependencies]
 embed-resource = "1.4"
+windows = "0.8.0"
 
 [profile.release]
 # 调整优化等级。默认的 release 优化等级为 3，这个等级下编译器会进行循环展开之类的操作以体积膨胀为代价提高程序运行速度
@@ -33,11 +34,13 @@ lazy_static = "1.4.0"
 console = "0.14.0"
 chrono = "0.4"
 remove_dir_all = "0.7.0"
-winapi = { version = "0.3", features = ["winnls"] }
+winreg = "0.8.0"
 unic-langid = "0.9.0"
 fluent-templates = "0.6.1"
-#tokio = { version = "1", features = ["full"] }
+windows = "0.8.0"
+#winapi = { version = "0.3", features = ["setupapi", "cfgmgr32"] }
 
+#tokio = { version = "1", features = ["full"] }
 #subprocess = "0.2.6"
 #anyhow = "1.0"
 #thiserror = "1.0"
