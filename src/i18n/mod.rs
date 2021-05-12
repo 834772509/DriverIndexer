@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use crate::bindings::Windows;
-use unic_langid::{LanguageIdentifier, langid};
-use fluent_templates::{Loader, static_loader};
 use fluent_templates::fluent_bundle::FluentValue;
+use fluent_templates::{static_loader, Loader};
+use std::collections::HashMap;
+use unic_langid::{langid, LanguageIdentifier};
 
 // 多国语言支持
 const US_ENGLISH: LanguageIdentifier = langid!("en-US");
@@ -19,12 +19,17 @@ static_loader! {
 
 pub fn getLocaleText(id: &str, args: Option<&HashMap<String, FluentValue>>) -> String {
     lazy_static! {
-        pub static ref LANG_ID: u16 = unsafe { return Windows::Win32::Intl::GetUserDefaultUILanguage() };
+        pub static ref LANG_ID: u16 = unsafe { Windows::Win32::Intl::GetUserDefaultUILanguage() };
     }
-    let lang = if LANG_ID.eq(&2052) { ZH_CHINEXE } else { US_ENGLISH };
-    if !args.is_some() {
-        LOCALES.lookup(&lang, id)
+    let lang = if LANG_ID.eq(&2052) {
+        ZH_CHINEXE
     } else {
-        LOCALES.lookup_with_args(&lang, id, &args.unwrap())
+        US_ENGLISH
+    };
+
+    if let Some(args) = args {
+        LOCALES.lookup_with_args(&lang, id, &args)
+    } else {
+        LOCALES.lookup(&lang, id)
     }
 }

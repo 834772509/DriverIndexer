@@ -1,10 +1,9 @@
-use std::process::{Command};
-use std::path::PathBuf;
 use std::error::Error;
 use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use crate::utils::util::writeEmbedFile;
 use crate::TEMP_PATH;
-
 
 pub struct sevenZip {
     zipProgram: PathBuf,
@@ -12,7 +11,9 @@ pub struct sevenZip {
 
 impl sevenZip {
     pub fn new() -> Result<sevenZip, Box<dyn Error>> {
-        if !TEMP_PATH.exists() { fs::create_dir(&*TEMP_PATH)?; }
+        if !TEMP_PATH.exists() {
+            fs::create_dir(&*TEMP_PATH)?;
+        }
         let zipProgram = TEMP_PATH.join("7z.exe");
         writeEmbedFile("7z.exe", &zipProgram)?;
         writeEmbedFile("7z.dll", &TEMP_PATH.join("7z.dll"))?;
@@ -26,7 +27,12 @@ impl sevenZip {
     /// 1. 压缩包路径
     /// 2. 解压路径
     /// 3. 输出路径
-    pub fn extractFiles(&self, zipFile: &PathBuf, extractPath: &str, outPath: &PathBuf) -> Result<bool, Box<dyn Error>> {
+    pub fn extractFiles(
+        &self,
+        zipFile: &Path,
+        extractPath: &str,
+        outPath: &Path,
+    ) -> Result<bool, Box<dyn Error>> {
         let output = Command::new(&self.zipProgram)
             .arg("e")
             .arg(zipFile.to_str().unwrap())
@@ -36,7 +42,7 @@ impl sevenZip {
             .arg(format!("-o{}", outPath.to_str().unwrap()))
             .output()?;
         let content = String::from_utf8_lossy(&output.stdout);
-        return Ok(!content.contains("No files to process"));
+        Ok(!content.contains("No files to process"))
     }
 
     /// 7-zip 解压文件
@@ -45,17 +51,26 @@ impl sevenZip {
     /// 1. 压缩包路径
     /// 2. 解压路径
     /// 3. 输出路径
-    pub fn extractFilesFromPath(&self, zipFile: &PathBuf, extractPath: &str, outPath: &PathBuf) -> Result<bool, Box<dyn Error>> {
+    pub fn extractFilesFromPath(
+        &self,
+        zipFile: &Path,
+        extractPath: &str,
+        outPath: &Path,
+    ) -> Result<bool, Box<dyn Error>> {
         let output = Command::new(&self.zipProgram)
             .arg("x")
             .arg(zipFile.to_str().unwrap())
-            .arg(if extractPath != "" { &extractPath } else { "*" })
+            .arg(if !extractPath.is_empty() {
+                &extractPath
+            } else {
+                "*"
+            })
             .arg("-y")
             .arg("-aos")
             .arg(format!("-o{}", outPath.to_str().unwrap()))
             .output()?;
         let outContent = String::from_utf8_lossy(&output.stdout);
-        return Ok(outContent.contains("Everything is Ok"));
+        Ok(outContent.contains("Everything is Ok"))
     }
 
     /// 7-zip 解压文件
@@ -64,7 +79,12 @@ impl sevenZip {
     /// 1. 压缩包路径
     /// 2. 解压路径
     /// 3. 输出路径
-    pub fn extractFilesFromPathRecurseSubdirectories(&self, zipFile: &PathBuf, extractPath: &str, outPath: &PathBuf) -> Result<bool, Box<dyn Error>> {
+    pub fn extractFilesFromPathRecurseSubdirectories(
+        &self,
+        zipFile: &Path,
+        extractPath: &str,
+        outPath: &Path,
+    ) -> Result<bool, Box<dyn Error>> {
         let output = Command::new(&self.zipProgram)
             .arg("x")
             .arg("-r")
@@ -75,6 +95,6 @@ impl sevenZip {
             .arg(format!("-o{}", outPath.to_str().unwrap()))
             .output()?;
         let content = String::from_utf8_lossy(&output.stdout);
-        return Ok(!content.contains("No files to process"));
+        Ok(!content.contains("No files to process"))
     }
 }

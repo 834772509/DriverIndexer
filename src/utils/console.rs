@@ -1,9 +1,9 @@
-use console::style;
+use crate::cli::matches::isDebug;
+use crate::i18n::getLocaleText;
+use crate::utils::util::writeLogFile;
 use crate::LOG_PATH;
 use chrono::Local;
-use crate::utils::util::writeLogFile;
-use crate::i18n::getLocaleText;
-use crate::cli::matches::isDebug;
+use console::style;
 
 pub enum ConsoleType {
     Info,
@@ -17,7 +17,7 @@ pub fn writeConsole(consoleType: ConsoleType, message: &str) {
         ConsoleType::Info => style(getLocaleText("Info", None)).cyan(),
         ConsoleType::Success => style(getLocaleText("Success", None)).green(),
         ConsoleType::Warning => style(getLocaleText("Warning", None)).yellow(),
-        ConsoleType::Err => style(getLocaleText("Err", None)).red().on_black().bold()
+        ConsoleType::Err => style(getLocaleText("Err", None)).red().on_black().bold(),
     };
     println!("  {}      {}", title, message);
     if isDebug() {

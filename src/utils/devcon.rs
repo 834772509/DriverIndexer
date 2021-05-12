@@ -1,13 +1,12 @@
 use std::error::Error;
-use crate::utils::util::{writeEmbedFile, StringUtils};
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::path::PathBuf;
-use std::{fs};
+use crate::utils::util::{writeEmbedFile, String_utils};
 use crate::TEMP_PATH;
 
-
 /// 硬件信息
-#[derive(Debug, Clone, Hash, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct HwID {
     /// 设备实例路径
     pub(crate) DeviceInstancePath: String,
@@ -23,10 +22,6 @@ impl PartialEq for HwID {
     fn eq(&self, other: &Self) -> bool {
         self.DeviceInstancePath == other.DeviceInstancePath
     }
-
-    fn ne(&self, other: &Self) -> bool {
-        unimplemented!()
-    }
 }
 
 /// Devcon操作类
@@ -36,24 +31,30 @@ pub struct Devcon {
     devconPath: PathBuf,
 }
 
-
 impl Devcon {
     /// 初始化
     pub fn new() -> Result<Devcon, Box<dyn Error>> {
-        if !TEMP_PATH.exists() { fs::create_dir(&*TEMP_PATH)?; }
+        if !TEMP_PATH.exists() {
+            fs::create_dir(&*TEMP_PATH)?;
+        }
         let devconPath = TEMP_PATH.join("devcon.exe");
         writeEmbedFile("devcon.exe", &devconPath)?;
-        Ok(Devcon {
-            devconPath
-        })
+        Ok(Devcon { devconPath })
     }
 
     /// 获取真实硬件id信息
     /// #参数
     /// 1. 驱动类别
-    pub fn getRealIdInfo<T1>(&self, driveClass: T1) -> Result<Vec<HwID>, Box<dyn Error>> where T1: Into<Option<String>>, {
+    pub fn getRealIdInfo<T1>(&self, driveClass: T1) -> Result<Vec<HwID>, Box<dyn Error>>
+        where
+            T1: Into<Option<String>>,
+    {
         let driveClass = driveClass.into();
-        let hwidType = if driveClass.is_some() { format!("={}", &driveClass.unwrap()) } else { "*".to_string() };
+        let hwidType = if driveClass.is_some() {
+            format!("={}", &driveClass.unwrap())
+        } else {
+            "*".to_string()
+        };
         let output = Command::new(&self.devconPath)
             .arg("hwids")
             .arg(hwidType)
@@ -62,9 +63,12 @@ impl Devcon {
         let content = String::from_utf8_lossy(&output.stdout);
 
         // 将 Name 与 Hardware IDs 分离
-        let content = content.replace("     Hardware IDs:", &*format!("\r\n    Hardware IDs:"));
+        let content = content.replace("     Hardware IDs:", "\r\n    Hardware IDs:");
         // 将 Name 与 Compatible IDs 分离，并加上空的Hardware IDs
-        let content = content.replace("     Compatible IDs:", &*format!("\r\n    Hardware IDs:\r\n    Compatible IDs:"));
+        let content = content.replace(
+            "     Compatible IDs:",
+            "\r\n    Hardware IDs:\r\n    Compatible IDs:",
+        );
 
         const DELIMITER: &str = "|";
         const SUBDELIMITER: &str = ",";
@@ -78,24 +82,41 @@ impl Devcon {
         let mut HwIDList: Vec<HwID> = Vec::new();
         // 通过换行符分割遍历
         for item in contentLine.lines() {
-
             // 获取设备实例路径
-            let DeviceInstancePath = item.to_string().getStringLeft(DELIMITER).unwrap_or("".to_string());
+            let DeviceInstancePath = item
+                .to_string()
+                .get_string_left(DELIMITER)
+                .unwrap_or_else(|_| "".to_string());
 
             // 获取显示名称
-            let name = item.to_string().getStringCenter("Name:", DELIMITER).unwrap_or("".to_string()).trim().to_string();
+            let name = item
+                .to_string()
+                .get_string_center("Name:", DELIMITER)
+                .unwrap_or_else(|_| "".to_string());
 
             // 获取硬件id
-            let hardwareIDs = item.to_string().getStringCenter("Hardware IDs:", DELIMITER).unwrap_or("".to_string()).replace(DELIMITER, "");
-            let hardwareIDList: Vec<String> = hardwareIDs.split(SUBDELIMITER).into_iter()
-                .filter(|&hardwareID| hardwareID != "")
+            let hardwareIDs = item
+                .to_string()
+                .get_string_center("Hardware IDs:", DELIMITER)
+                .unwrap_or_else(|_| "".to_string())
+                .replace(DELIMITER, "");
+            let hardwareIDList: Vec<String> = hardwareIDs
+                .split(SUBDELIMITER)
+                .into_iter()
+                .filter(|&hardwareID| !hardwareID.is_empty())
                 .map(|hardwareID| hardwareID.to_string())
                 .collect();
 
             // 获取兼容id
-            let CompatibleIDs = item.to_string().getStringRight("Compatible IDs:").unwrap_or("".to_string()).replace(DELIMITER, "");
-            let CompatibleIDList: Vec<String> = CompatibleIDs.split(SUBDELIMITER).into_iter()
-                .filter(|&CompatibleID| CompatibleID != "")
+            let CompatibleIDs = item
+                .to_string()
+                .get_string_right("Compatible IDs:")
+                .unwrap_or_else(|_| "".to_string())
+                .replace(DELIMITER, "");
+            let CompatibleIDList: Vec<String> = CompatibleIDs
+                .split(SUBDELIMITER)
+                .into_iter()
+                .filter(|&CompatibleID| !CompatibleID.is_empty())
                 .map(|CompatibleID| CompatibleID.to_string())
                 .collect();
 
@@ -129,7 +150,9 @@ impl Devcon {
         for item in contentLine.lines() {
             if item.contains("problem") {
                 let id = item.split(DELIMITER).next().unwrap_or("");
-                if id != "" { problemIdList.push(String::from(id)); }
+                if !id.is_empty() {
+                    problemIdList.push(String::from(id));
+                }
             }
         }
         Ok(problemIdList)
@@ -162,7 +185,7 @@ impl Devcon {
     /// # 参数
     /// 1. INF文件路径
     /// 2. 硬件ID（不是设备实例路径）
-    pub fn loadDriver(&self, infPath: &PathBuf, hwid: &String) -> Result<bool, Box<dyn Error>> {
+    pub fn loadDriver(&self, infPath: &Path, hwid: &str) -> Result<bool, Box<dyn Error>> {
         // 不要用 install 命令
         let output = Command::new(&self.devconPath)
             .arg("update")
@@ -175,9 +198,7 @@ impl Devcon {
 
     /// 扫描以发现新的硬件
     pub fn rescan(&self) -> Result<bool, Box<dyn Error>> {
-        let output = Command::new(&self.devconPath)
-            .arg("rescan")
-            .output()?;
+        let output = Command::new(&self.devconPath).arg("rescan").output()?;
         let content = String::from_utf8_lossy(&output.stdout);
         Ok(content.contains("completed"))
     }

@@ -1,21 +1,22 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
 use std::error::Error;
-use std::{fs, thread};
-use encoding::{DecoderTrap};
-use regex::{Regex, RegexBuilder, RegexSetBuilder, RegexSet};
 use std::fs::File;
 use std::io::Read;
-use crate::utils::console::{writeConsole, ConsoleType};
-use serde::{Serialize, Deserialize};
-use chardet::{detect, charset2encoding};
-use encoding::label::encoding_from_whatwg_label;
-use crate::TEMP_PATH;
-use crate::utils::sevenZip::sevenZip;
-use crate::i18n::getLocaleText;
-use std::collections::{HashMap};
-use fluent_templates::fluent_bundle::FluentValue;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
-use crate::utils::util::{getFileList};
+use std::{fs, thread};
+use crate::i18n::getLocaleText;
+use crate::utils::console::{writeConsole, ConsoleType};
+use crate::utils::sevenZIP::sevenZip;
+use crate::utils::util::getFileList;
+use crate::TEMP_PATH;
+use chardet::{charset2encoding, detect};
+use encoding::label::encoding_from_whatwg_label;
+use encoding::DecoderTrap;
+use fluent_templates::fluent_bundle::FluentValue;
+use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
+use serde::{Deserialize, Serialize};
+
 
 /// INF驱动信息
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -43,7 +44,7 @@ impl InfInfo {
     /// # 参数
     /// 1. inf 基本路径（父路径）
     /// 2. inf 文件路径
-    pub fn parsingInfFile(basePath: &PathBuf, infFile: &PathBuf) -> Result<InfInfo, Box<dyn Error>> {
+    pub fn parsingInfFile(basePath: &Path, infFile: &Path) -> Result<InfInfo, Box<dyn Error>> {
         // let regExpression = [r"PCI\\.*?&.*?&[^; \f\n\r\t\v]+", r"USB\\.*?&[^; \f\n\r\t\v]+", ];
         lazy_static! {
             // 所有类别取自 [HKLM\SYSTEM\ControlSet001\Enum]
@@ -87,7 +88,9 @@ impl InfInfo {
                 // 删除逗号、转为大写
                 let id = id.as_str().replace(",", "").to_uppercase();
                 // 检测是否重复
-                if !idList.contains(&id) { idList.push(id); }
+                if !idList.contains(&id) {
+                    idList.push(id);
+                }
             }
         }
 
@@ -100,18 +103,22 @@ impl InfInfo {
                     return resultContent;
                 }
             }
-            return "".to_string();
+            "".to_string()
         };
 
         // 获取驱动类别
         let Class = getInfItemFun("Class");
 
         // 获驱动适用系统架构
-        let Arch: Vec<String> = REGSYSTEMARCHIST.matches(&*infContent).into_iter().map(|index| SYSTEMARCH[index].to_string()).collect();
+        let Arch: Vec<String> = REGSYSTEMARCHIST
+            .matches(&*infContent)
+            .into_iter()
+            .map(|index| SYSTEMARCH[index].to_string())
+            .collect();
 
         // 获取驱动版本、日期
         let dateAndVersion = getInfItemFun("DriverVer");
-        let dateAndVersion: Vec<&str> = dateAndVersion.split(",").collect();
+        let dateAndVersion: Vec<&str> = dateAndVersion.split(',').collect();
         let Date = dateAndVersion.get(0).unwrap_or(&"").to_string();
         let Version = dateAndVersion.get(1).unwrap_or(&"").to_string();
 
@@ -130,7 +137,13 @@ impl InfInfo {
 
         Ok(InfInfo {
             Path: parentPath.to_str().unwrap().parse().unwrap(),
-            Inf: infFile.file_name().unwrap().to_str().unwrap().parse().unwrap(),
+            Inf: infFile
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap(),
             Class,
             Arch,
             // Provider: provider,
@@ -145,10 +158,10 @@ impl InfInfo {
     /// # 参数
     /// 1. inf 基本路径（父路径）
     /// 2. inf 文件路径列表
-    pub fn parsingInfFileList(basePath: &PathBuf, infFileList: &Vec<PathBuf>) -> Vec<InfInfo> {
+    pub fn parsingInfFileList(basePath: &Path, infFileList: &[PathBuf]) -> Vec<InfInfo> {
         let (tx, rx) = mpsc::channel();
         for item in infFileList.iter() {
-            let basePath = basePath.clone();
+            let basePath = basePath.to_path_buf();
             let infFile = item.clone();
             let tx1 = mpsc::Sender::clone(&tx);
             thread::spawn(move || {
@@ -163,10 +176,31 @@ impl InfInfo {
         let infInfoList = rx.iter().collect::<Vec<InfInfo>>();
         infInfoList
     }
+
+    /// 保存INF数据（通过JSON）
+    /// #参数
+    /// 1. INF列表
+    /// 2. 索引文件保存路径
+    pub fn saveIndexFromJson(Data: &[InfInfo], savaPath: &Path) -> Result<(), Box<dyn Error>> {
+        let json = serde_json::to_string(&Data)?;
+        fs::write(savaPath, json)?;
+        Ok(())
+    }
+
+    /// 解析索引数据
+    /// # 参数
+    /// 1. 索引文件路径
+    pub fn parsingIndex(indexPath: &Path) -> Result<Vec<InfInfo>, Box<dyn Error>> {
+        let mut indexFile = File::open(indexPath)?;
+        let mut indexContent = String::new();
+        indexFile.read_to_string(&mut indexContent)?;
+        let json: Vec<InfInfo> = serde_json::from_str(&*indexContent)?;
+        Ok(json)
+    }
 }
 
-pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
-    writeConsole(ConsoleType::Info, &*getLocaleText("Processing", None));
+pub fn createIndex(basePath: &Path, saveIndexPath: &Path) {
+    writeConsole(ConsoleType::Info, &*getLocaleText("processing", None));
 
     let zip = sevenZip::new().unwrap();
 
@@ -180,17 +214,26 @@ pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
     if basePath.is_dir() {
         // 从驱动目录中创建索引文件
         infList = getFileList(&basePath, "*.inf").unwrap();
-        infParentPath = basePath.clone();
+        infParentPath = basePath.to_path_buf();
         // 如果输入的索引路径是相对路径，则令实际路径为驱动目录所在路径
-        indexPath = if saveIndexPath.is_relative() { basePath.join(&saveIndexPath) } else { saveIndexPath.clone() };
+        indexPath = if saveIndexPath.is_relative() {
+            basePath.join(&saveIndexPath)
+        } else {
+            saveIndexPath.to_path_buf()
+        };
     } else {
         // 从文件中创建索引文件
         infParentPath = TEMP_PATH.join(basePath.file_stem().unwrap());
         // 解压INF文件
-        zip.extractFilesFromPathRecurseSubdirectories(&basePath, "*.inf", &infParentPath).unwrap();
+        zip.extractFilesFromPathRecurseSubdirectories(&basePath, "*.inf", &infParentPath)
+            .unwrap();
         infList = getFileList(&infParentPath, "*.inf").unwrap();
         // 如果输入的索引路径是相对路径，则令实际实际为驱动包所在路径
-        indexPath = if saveIndexPath.is_relative() { basePath.parent().unwrap().join(&saveIndexPath) } else { saveIndexPath.clone() };
+        indexPath = if saveIndexPath.is_relative() {
+            basePath.parent().unwrap().join(&saveIndexPath)
+        } else {
+            saveIndexPath.to_path_buf()
+        };
     }
 
     let mut infInfoList: Vec<InfInfo> = Vec::new();
@@ -201,20 +244,26 @@ pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
     for item in infList.iter() {
         let arg = hash_map!("path".to_string() => item.to_str().unwrap().into());
         if let Ok(currentInfo) = InfInfo::parsingInfFile(&infParentPath, item) {
-            if currentInfo.DriverList.len() == 0 {
+            if currentInfo.DriverList.is_empty() {
                 blankCount += 1;
-                writeConsole(ConsoleType::Warning, &*getLocaleText("no-hardware", Some(&arg)));
+                writeConsole(
+                    ConsoleType::Warning,
+                    &*getLocaleText("no-hardware", Some(&arg)),
+                );
                 continue;
             }
             successCount += 1;
             infInfoList.push(currentInfo);
         } else {
             ErrorCount += 1;
-            writeConsole(ConsoleType::Err, &*getLocaleText("inf-parsing-err", Some(&arg)));
+            writeConsole(
+                ConsoleType::Err,
+                &*getLocaleText("inf-parsing-err", Some(&arg)),
+            );
         }
-    };
+    }
 
-    if let Err(_e) = saveDataFromJson(&infInfoList, &indexPath) {
+    if let Err(_e) = InfInfo::saveIndexFromJson(&infInfoList, &indexPath) {
         writeConsole(ConsoleType::Err, &*getLocaleText("index-save-failed", None));
         return;
     }
@@ -225,24 +274,10 @@ pub fn createIndex(basePath: &PathBuf, saveIndexPath: &PathBuf) {
         "blankCount".to_string() => blankCount.to_string().into(),
     );
     writeConsole(ConsoleType::Info, &*getLocaleText("total-info", Some(&arg)));
-    let arg: HashMap<String, FluentValue> = hash_map!("path".to_string() => indexPath.to_str().unwrap().into());
-    writeConsole(ConsoleType::Success, &*getLocaleText("saveInfo", Some(&arg)));
-}
-
-/// 保存inf数据（通过json）
-fn saveDataFromJson(Data: &Vec<InfInfo>, savaPath: &PathBuf) -> Result<(), Box<dyn Error>> {
-    let json = serde_json::to_string(&Data)?;
-    fs::write(savaPath, json)?;
-    Ok(())
-}
-
-/// 获取索引数据
-/// # 参数
-/// 1. inf文件路径
-pub fn parsingIndexData(indexPath: &PathBuf) -> Result<Vec<InfInfo>, Box<dyn Error>> {
-    let mut indexFile = File::open(indexPath)?;
-    let mut indexContent = String::new();
-    indexFile.read_to_string(&mut indexContent)?;
-    let json: Vec<InfInfo> = serde_json::from_str(&*indexContent)?;
-    Ok(json)
+    let arg: HashMap<String, FluentValue> =
+        hash_map!("path".to_string() => indexPath.to_str().unwrap().into());
+    writeConsole(
+        ConsoleType::Success,
+        &*getLocaleText("saveInfo", Some(&arg)),
+    );
 }

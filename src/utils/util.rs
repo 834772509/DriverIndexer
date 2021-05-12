@@ -1,15 +1,27 @@
+use std::cmp::Ordering;
 use std::error::Error;
-use std::path::PathBuf;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use crate::{Asset};
-use glob::{MatchOptions};
-use std::cmp::Ordering;
+use std::path::{Path, PathBuf};
+use crate::Asset;
+use glob::MatchOptions;
 
 /// 写到文件
-pub fn writeEmbedFile(filePath: &str, outFilePath: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn writeEmbedFile(filePath: &str, outFilePath: &Path) -> Result<(), Box<dyn Error>> {
     let file = Asset::get(filePath).unwrap();
-    File::create(outFilePath)?.write(&file)?;
+    File::create(outFilePath)?.write_all(&file)?;
+    Ok(())
+}
+
+/// 写日志
+pub fn writeLogFile(logPath: &Path, content: &str) -> Result<(), Box<dyn Error>> {
+    // 尝试创建文件
+    if !logPath.exists() {
+        File::create(logPath).expect("无法创建日志文件");
+    }
+    // 以追加模式打开文件
+    let mut file = OpenOptions::new().append(true).open(logPath)?;
+    file.write_all(format!("{}\r\n", content).as_bytes())?;
     Ok(())
 }
 
@@ -17,13 +29,17 @@ pub fn writeEmbedFile(filePath: &str, outFilePath: &PathBuf) -> Result<(), Box<d
 /// # 参数
 /// 1. 目录路径
 /// 2. 文件通配符 如 *.inf
-pub fn getFileList(path: &PathBuf, fileType: &str) -> Result<Vec<PathBuf>, Box<dyn Error>> {
-    let srerch = glob::glob_with(&*format!(r"{}\**\{}", path.to_str().unwrap(), fileType), MatchOptions {
-        case_sensitive: false,
-        require_literal_separator: false,
-        require_literal_leading_dot: false,
-    })?;
-    let fileList: Vec<PathBuf> = srerch.into_iter()
+pub fn getFileList(path: &Path, fileType: &str) -> Result<Vec<PathBuf>, Box<dyn Error>> {
+    let srerch = glob::glob_with(
+        &*format!(r"{}\**\{}", path.to_str().unwrap(), fileType),
+        MatchOptions {
+            case_sensitive: false,
+            require_literal_separator: false,
+            require_literal_leading_dot: false,
+        },
+    )?;
+    let fileList: Vec<PathBuf> = srerch
+        .into_iter()
         .filter(|item| item.as_ref().unwrap().is_file())
         .map(|item| item.unwrap())
         .collect();
@@ -31,7 +47,7 @@ pub fn getFileList(path: &PathBuf, fileType: &str) -> Result<Vec<PathBuf>, Box<d
 }
 
 /// 是否为压缩包文件
-pub fn isArchive(archivePath: &PathBuf) -> bool {
+pub fn isArchive(archivePath: &Path) -> bool {
     let extension = archivePath.extension().unwrap().to_str().unwrap_or("");
     let supportExtension = ["7z", "zip", "rar", "cab", "tar", "wim"];
     for item in supportExtension.iter() {
@@ -39,17 +55,7 @@ pub fn isArchive(archivePath: &PathBuf) -> bool {
             return true;
         }
     }
-    return false;
-}
-
-/// 写日志
-pub fn writeLogFile(logPath: &PathBuf, content: &String) -> Result<(), Box<dyn Error>> {
-    // 尝试创建文件
-    if !logPath.exists() { File::create(logPath).expect("无法创建日志文件"); }
-    // 以追加模式打开文件
-    let mut file = OpenOptions::new().append(true).open(logPath)?;
-    file.write_all(format!("{}\r\n", content).as_bytes())?;
-    Ok(())
+    false
 }
 
 /// 比较版本号大小
@@ -61,38 +67,59 @@ pub fn compareVersiopn(version1: &str, version2: &str) -> Ordering {
 
     // 比较版本
     for i in 0..std::cmp::max(n1, n2) {
-        let i1 = if i < n1 { nums1[i].parse::<i32>().unwrap() } else { 0 };
-        let i2 = if i < n2 { nums2[i].parse::<i32>().unwrap() } else { 0 };
+        let i1 = if i < n1 {
+            nums1[i].parse::<i32>().unwrap()
+        } else {
+            0
+        };
+        let i2 = if i < n2 {
+            nums2[i].parse::<i32>().unwrap()
+        } else {
+            0
+        };
         if i1 != i2 {
-            return if i1 > i2 { Ordering::Greater } else { Ordering::Less };
+            return if i1 > i2 {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            };
         }
     }
     // 版本相等
-    return Ordering::Equal;
+    Ordering::Equal
 }
 
 // 增加字符串截取方法
-pub trait StringUtils {
-    fn getStringLeft(&self, right: &str) -> Result<String, Box<dyn Error>>;
-    fn getStringCenter(&self, start: &str, end: &str) -> Result<String, Box<dyn Error>>;
-    fn getStringRight(&self, left: &str) -> Result<String, Box<dyn Error>>;
+pub trait String_utils {
+    fn get_string_left(&self, right: &str) -> Result<String, Box<dyn Error>>;
+    fn get_string_center(&self, start: &str, end: &str) -> Result<String, Box<dyn Error>>;
+    fn get_string_right(&self, left: &str) -> Result<String, Box<dyn Error>>;
 }
 
-impl StringUtils for String {
+impl String_utils for String {
     /// 取出字符串左边文本
-    fn getStringLeft(&self, right: &str) -> Result<String, Box<dyn Error>> {
-        let endSize = self.find(right).ok_or("发生错误-查找结束位置失败".to_owned())?;
+    fn get_string_left(&self, right: &str) -> Result<String, Box<dyn Error>> {
+        let endSize = self
+            .find(right)
+            .ok_or_else(|| "发生错误-查找结束位置失败".to_owned())?;
         Ok((&self[..endSize]).to_string())
     }
     /// 取出字符串中间文本
-    fn getStringCenter(&self, start: &str, end: &str) -> Result<String, Box<dyn Error>> {
-        let startSize = self.find(start).ok_or("发生错误-查找起始位置失败".to_owned())?;
-        let endSize = startSize + self[startSize..].find(end).ok_or("发生错误-查找结束位置失败".to_owned())?;
+    fn get_string_center(&self, start: &str, end: &str) -> Result<String, Box<dyn Error>> {
+        let startSize = self
+            .find(start)
+            .ok_or_else(|| "发生错误-查找起始位置失败".to_owned())?;
+        let endSize = startSize
+            + self[startSize..]
+            .find(end)
+            .ok_or_else(|| "发生错误-查找结束位置失败".to_owned())?;
         Ok((&self[startSize + start.len()..endSize]).to_string())
     }
     /// 取出字符串右边文本
-    fn getStringRight(&self, left: &str) -> Result<String, Box<dyn Error>> {
-        let startSize = self.find(left).ok_or("发生错误-查找左边位置失败".to_owned())?;
+    fn get_string_right(&self, left: &str) -> Result<String, Box<dyn Error>> {
+        let startSize = self
+            .find(left)
+            .ok_or_else(|| "发生错误-查找左边位置失败".to_owned())?;
         Ok((&self[startSize + left.len()..]).to_string())
     }
 }

@@ -16,17 +16,13 @@ Since the hardware ID is stored in the INF file, decompression on demand needs t
 
 ### Why does the index file use the `JSON` format?
 
-Under normal circumstances, the index in a driver package will not exceed 10MB, and the amount of data of this size is sufficient to use the `JSON` format.
+Under normal circumstances, the index in a driver package will not exceed 10MB, and this size of data is enough to use the common `JSON` format.
 
 ### Why can I install the driver without specifying the index file?
 
 When no index file is specified, `DriverIndexer` will decompress all INF files in the driver package, create an index instantly, and finally match the driver according to the index information.
 
-### Why use `Devcon` to install the driver?
-
-It has been tested to install the driver `Devcon` faster than `Dpinst`, `Pnputi`, etc., and `Dpinst` currently no longer provides updates from Microsoft.
-
-### What is the difference with IT Sky Universal Drive/Driver President?
+### What is the difference with EasyDrv/DrvCeo?
 
 `DriverIndexer` is a command line program, which means that the driver can be installed silently without interface interaction, making the experience the same as the built-in driver.
 
@@ -36,24 +32,30 @@ It has been tested to install the driver `Devcon` faster than `Dpinst`, `Pnputi`
 
 The following are the recommended downloading websites for the driver package (all free and without encryption)
 
-- [DriverPack](https://drp.su/en/foradmin)
-- [3DP](https://www.3dpchip.com/3dpchip/3dp/net_down.php)
-- [DriverOff](https://driveroff.net/category/dp)
-- [BatPEDriver](http://forum.ru-board.com/topic.cgi?forum=62&topic=24098&start=71&limit=1&m=1#1)
+- [DriverPack](https://drp.su/en/foradmin?_blank)
+- [3DP](https://www.3dpchip.com/3dpchip/3dp/net_down.php?_blank)
+- [DriverOff](https://driveroff.net/category/dp?_blank)
+- [BatPEDriver](http://forum.ru-board.com/topic.cgi?forum=62&topic=24098&start=71&limit=1&m=1#1?_blank)
 
 ## Software Architecture
 
-Use `Rust` to develop, call `Devcon.exe` to obtain the hardware id and install the driver.
+Use `Rust` to write, call `Devcon.exe` to obtain hardware information, and use API to install device drivers, `VC-LTL` compilation.
 
 ### Drive matching rules
 
-1. Only match devices with **no driver installed**
+1. By default, it only matches devices with no driver installed
 2. The priority of the dedicated driver is greater than that of the public version
 3. The higher version has priority over the lower version
+4. Three matches (to prevent unsuccessful installation of some drivers)
+
+### What language is `Rust`?
+
+`Rust` is a system-level programming language, which is slightly more efficient than C++ and comparable to C language.
 
 ## Instructions for use
 
-This program is a command line program, so it needs to be run with parameters after it, and it can be run through `cmd`. Note: Please run `cmd` as an administrator.
+This program is a command line program, so it needs to be run with parameters after it. For example, double-clicking the program directly will cause a "flash back" phenomenon. You can run it through terminals such as `cmd` and `PowerShell`.  
+Note: Please run the terminal as an **administrator**.
 
 ### Create Index
 
@@ -68,15 +70,23 @@ This program is a command line program, so it needs to be run with parameters af
 
 ### Load the driver
 
+Simple to use(No driver index): `DriverIndexer.exe load-driver drivePath/drivePackagePath`
+
 - No driver index: `DriverIndexer.exe load-driver drivePath/drivePackagePath`
   - `DriverIndexer.exe load-driver D:\netcard`
   - `DriverIndexer.exe load-driver D:\netcard.7z`
-- Drive index: `DriverIndexer.exe load-driver drivePackagePath indexPath`
+  - `DriverIndexer.exe load-driver D:\netcard\*.7z`
+- Drive index: `DriverIndexer.exe load-driver drivePath/drivePackagePath indexPath`
   - `DriverIndexer.exe load-driver D:\netcard.7z netcard.json`
   - `DriverIndexer.exe load-driver D:\netcard.7z D:\netcard.json`
-- Specify drive type: `DriverIndexer.exe load-driver drivePackagePath --DriveClass DriveType`
+  - `DriverIndexer.exe load-driver D:\netcard\*.7z D:\netcard\*.json`
+- Specify drive type: `DriverIndexer.exe load-driver drivePath/drivePackagePath --DriveClass DriveType`
   - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Net`
   - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Display`
+- Match all devices：`DriverIndexer.exe load-driver drivePath/drivePackagePath --AllDevice`
+  - `DriverIndexer.exe load-driver D:\netcard.7z --AllDevice`
+- Decompress driver only：`DriverIndexer.exe load-driver drivePath/drivePackagePath --ExtractDriver UnzipDirectory`
+  - `DriverIndexer.exe load-driver D:\netcard.7z --ExtractDriver D:\netcard`
 
 ### Organize the drive
 
@@ -108,6 +118,8 @@ This program is a command line program, so it needs to be run with parameters af
 - Lightning
 - Skyfree
 - Red Sakuragi
+- Little duck
+- Gross Profit
 
 ## Participate in Contribution
 

@@ -1,3 +1,3 @@
 pub mod cli;
 pub mod matches;
-pub mod validator;
+mod validator;

@@ -1,15 +1,21 @@
-use std::path::PathBuf;
-use crate::utils::util::{getFileList};
 use std::fs;
-use crate::utils::console::{writeConsole, ConsoleType};
+use std::path::Path;
 use crate::i18n::getLocaleText;
+use crate::utils::console::{writeConsole, ConsoleType};
+use crate::utils::util::getFileList;
 
-pub fn classify_driver(driverPath: &PathBuf) {
+
+pub fn classify_driver(driverPath: &Path) {
     // 遍历INF文件
     let infList = getFileList(driverPath, "*.inf").unwrap();
     for infFile in infList.iter() {
         // 将驱动目录重命名为INF文件名
-        let newName = &infFile.parent().unwrap().parent().unwrap().join(infFile.file_stem().unwrap());
+        let newName = &infFile
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join(infFile.file_stem().unwrap());
         fs::rename(&infFile.parent().unwrap(), newName).unwrap();
     }
 
@@ -30,5 +36,8 @@ pub fn classify_driver(driverPath: &PathBuf) {
     //         .output().unwrap();
     // }
 
-    writeConsole(ConsoleType::Success, &*getLocaleText("Drivers-finishing-complete", None));
+    writeConsole(
+        ConsoleType::Success,
+        &*getLocaleText("Drivers-finishing-complete", None),
+    );
 }

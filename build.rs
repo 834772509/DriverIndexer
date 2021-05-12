@@ -12,6 +12,9 @@ fn main() {
         Windows::Win32::WindowsAndMessaging::HWND,
 
         Windows::Win32::DeviceAndDriverInstallation::*,
-        Windows::Win32::Debug::GetLastError
+        Windows::Win32::Debug::GetLastError,
+
+       Windows::Win32::SystemServices::{PWSTR,HANDLE},
+       Windows::Win32::SystemServices::INVALID_HANDLE_VALUE,
     );
 }

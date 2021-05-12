@@ -16,17 +16,13 @@
 
 ### 为什么索引文件使用`JSON`格式？
 
-通常情况下，一个驱动包内的索引不会超过10MB，而这个大小的数据量使用`JSON`格式足够了。
+通常情况下，一个驱动包内的索引不会超过10MB，而这个大小的数据量使用通用的`JSON`格式足够了。
 
 ### 为什么可以不指定索引文件来安装驱动？
 
 当不指定索引文件时，`DriverIndexer`会解压驱动包中的所有INF文件，即时建立索引，最后根据索引的信息来匹配驱动。
 
-### 为什么使用`Devcon`安装驱动？
-
-经测试安装驱动`Devcon`比`Dpinst`、`Pnputi`等速度要快，且`Dpinst`目前微软已不再提供更新。
-
-### 与 IT天空万能驱动/驱动总裁 有何区别？
+### 与 EasyDrv/驱动总裁 有何区别？
 
 `DriverIndexer`是命令行程序，这意味着可以静默安装驱动，不需要进行界面交互，使得体验与内置驱动一样。
 
@@ -36,24 +32,30 @@
 
 以下为推荐的驱动包下载网站（均免费、无加密）
 
-- [DriverPack](https://drp.su/en/foradmin)
-- [3DP](https://www.3dpchip.com/3dpchip/3dp/net_down.php)
-- [DriverOff](https://driveroff.net/category/dp)
-- [BatPEDriver](http://forum.ru-board.com/topic.cgi?forum=62&topic=24098&start=71&limit=1&m=1#1)
+- [DriverPack](https://drp.su/en/foradmin?_blank)
+- [3DP](https://www.3dpchip.com/3dpchip/3dp/net_down.php?_blank)
+- [DriverOff](https://driveroff.net/category/dp?_blank)
+- [BatPEDriver](http://forum.ru-board.com/topic.cgi?forum=62&topic=24098&start=71&limit=1&m=1#1?_blank)
 
 ## 软件架构
 
-使用`Rust`开发，调用`Devcon.exe`获取硬件 id、安装驱动。
+使用`Rust`编写，调用`Devcon.exe`获取硬件信息，使用API安装设备驱动，`VC-LTL`编译。
 
 ### 驱动匹配规则
 
-1. 仅匹配**未安装驱动**的设备
+1. 默认仅匹配未安装驱动的设备
 2. 专用驱动优先级大于公版
 3. 高版本优先级大于低版本
+4. 三次匹配（防止部分驱动未安装成功）
+
+### `Rust`是什么语言？
+
+`Rust`是一门系统级编程语言，效率略高于C++，与C语言不相上下。
 
 ## 使用说明
 
-本程序为命令行程序，故需要在其后面接参数运行，可通过`cmd`来运行，注意：请使用管理员身份运行`cmd`。
+本程序为命令行程序，故需要在其后面接参数运行，如直接双击程序将会出现“闪退”现象，您可通过`cmd`、`PowerShell`等终端来运行。  
+注意：请使用**管理员身份**运行终端。
 
 ### 创建索引
 
@@ -68,15 +70,23 @@
 
 ### 加载驱动
 
+简单使用（无驱动索引）: `DriverIndexer.exe load-driver 驱动路径/驱动包路径`
+
 - 无驱动索引: `DriverIndexer.exe load-driver 驱动路径/驱动包路径`
   - `DriverIndexer.exe load-driver D:\netcard`
   - `DriverIndexer.exe load-driver D:\netcard.7z`
-- 有驱动索引: `DriverIndexer.exe load-driver 驱动包路径 驱动路径`
+  - `DriverIndexer.exe load-driver D:\netcard\*.7z`
+- 有驱动索引: `DriverIndexer.exe load-driver 驱动路径/驱动包路径 索引路径`
   - `DriverIndexer.exe load-driver D:\netcard.7z netcard.json`
   - `DriverIndexer.exe load-driver D:\netcard.7z D:\netcard.json`
-- 指定驱动类型：`DriverIndexer.exe load-driver 驱动包路径 --DriveClass 驱动类型`
+  - `DriverIndexer.exe load-driver D:\netcard\*.7z D:\netcard\*.json`
+- 指定驱动类型：`DriverIndexer.exe load-driver 驱动路径/驱动包路径 --DriveClass 驱动类型`
   - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Net`
   - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Display`
+- 匹配所有设备：`DriverIndexer.exe load-driver 驱动路径/驱动包路径 --AllDevice`
+  - `DriverIndexer.exe load-driver D:\netcard.7z --AllDevice`
+- 仅解压驱动：`DriverIndexer.exe load-driver 驱动路径/驱动包路径 --ExtractDriver 解压目录`
+  - `DriverIndexer.exe load-driver D:\netcard.7z --ExtractDriver D:\netcard`
 
 ### 整理驱动
 
@@ -108,6 +118,8 @@
 - Lightning
 - Skyfree
 - 红毛樱木
+- 小鸭子
+- 毛利
 
 ## 参与贡献
 
