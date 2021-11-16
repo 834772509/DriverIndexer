@@ -44,7 +44,7 @@ impl Devcon {
 
     /// 获取真实硬件id信息
     /// #参数
-    /// 1. 驱动类别
+    /// 1. 驱动类别（注意：只能获取已安装驱动的设备）
     pub fn getRealIdInfo<T1>(&self, driveClass: T1) -> Result<Vec<HwID>, Box<dyn Error>>
         where
             T1: Into<Option<String>>,

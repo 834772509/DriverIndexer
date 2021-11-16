@@ -6,23 +6,10 @@ mod Tests {
     use crate::utils::devcon::Devcon;
     use crate::utils::setupAPI;
     use crate::utils::util::compareVersiopn;
-    use std::path::PathBuf;
+    use std::path::{PathBuf, Path};
     use std::time::{SystemTime, UNIX_EPOCH};
     use std::{mem, thread};
-
-    #[test]
-    fn aaa() -> i32 {
-        let aaa = if 1 == 1 {
-            if 1 == 1 {
-                2
-            } else {
-                3
-            }
-        } else {
-            0
-        };
-        println!("{}", aaa);
-    }
+    use crate::subCommand::create_index::InfInfo;
 
     // 文件解压测试
     #[test]
@@ -92,17 +79,13 @@ mod Tests {
     fn parsingInfFileTest() {
         use crate::subCommand::create_index::InfInfo;
 
-        // let basePath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\Net");
-        let basePath = PathBuf::from(
-            r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动",
-        );
         let infPath = PathBuf::from(
-            r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动\netrtl8188gu.inf",
+            r"C:\Users\Administrator\Desktop\NETwbw02.INF",
         );
 
         println!(
             "{:#?}",
-            InfInfo::parsingInfFile(&basePath, &infPath).unwrap()
+            InfInfo::parsingInfFile(&infPath.parent().unwrap(), &infPath).unwrap()
         );
     }
 
@@ -162,7 +145,7 @@ mod Tests {
 
         // 匹配硬件id
         let time1 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        let matchInfo = getMatchInfo(&hwIdList, &infInfoList).unwrap();
+        let matchInfo = getMatchInfo(&hwIdList, &infInfoList, None);
         let time2 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
         println!("{:#?}", matchInfo);
@@ -188,7 +171,7 @@ mod Tests {
         let index = None;
         // let index = Some(PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.json"));
 
-        loadDriver(&basePath, index, false, None);
+        loadDriver(&basePath, index, false, None, false);
     }
 
     // 驱动整理测试
@@ -205,6 +188,11 @@ mod Tests {
     #[test]
     fn versionMatches() {
         println!("{:?}", compareVersiopn("1.0", "2.0"));
+
+        let mut info = InfInfo::parsingIndex(Path::new(
+            r"D:\Project\FirPE\EFI\PETOOLS\驱动程序\无线网卡.index"
+        )).unwrap();
+        info.sort_by(|b, a| compareVersiopn(&*a.Version, &*b.Version));
     }
 
     // 编码测试
@@ -306,13 +294,11 @@ mod Tests {
     fn setupAPITest() {
         use crate::utils::setupAPI;
 
-        // unsafe {
-        //     let ClassArray = EnumDeviceClasses();
-        //     for item in ClassArray {
-        //         EnumDevices(item);
-        //     }
-        // }
         unsafe {
+            // let ClassArray = EnumDeviceClasses();
+            // for item in ClassArray {
+            //     EnumDevices(item);
+            // }
             setupAPI::getDeviceInfo();
             // println!("{}", setupAPI::rescan());
         }

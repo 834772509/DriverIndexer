@@ -27,7 +27,12 @@ pub fn cli<'a>() -> ArgMatches<'a> {
         .version_message(&*Box::leak(
             getLocaleText("version-message", None).into_boxed_str(),
         ))
-        .subcommand(SubCommand::with_name(HELP).about(&*getLocaleText("help", None)))
+        .help_short("H")
+        .subcommand(SubCommand::with_name(HELP)
+            .help_short("H")
+            .about(&*getLocaleText("help", None))
+        )
+
         // Debug 模式
         .arg(
             Arg::with_name("debug")
@@ -39,6 +44,7 @@ pub fn cli<'a>() -> ArgMatches<'a> {
         .subcommand(
             SubCommand::with_name("create-index")
                 .about(&*getLocaleText("create-index", None))
+                .help_short("H")
                 .arg(
                     Arg::with_name(DRIVEPATH)
                         .value_name(DRIVEPATH)
@@ -57,6 +63,7 @@ pub fn cli<'a>() -> ArgMatches<'a> {
         .subcommand(
             SubCommand::with_name("load-driver")
                 .about(&*getLocaleText("load-driver", None))
+                .help_short("H")
                 // 参数-驱动
                 .arg(
                     Arg::with_name(DRIVEPATH)
@@ -95,7 +102,6 @@ pub fn cli<'a>() -> ArgMatches<'a> {
                         .short("e")
                         .long(EXTRACTDRIVER)
                         .value_name(EXTRACTDRIVER)
-                        .validator(isValidDirectory)
                         .help(&*getLocaleText("only-unzip", None)),
                 ),
         )
@@ -103,6 +109,7 @@ pub fn cli<'a>() -> ArgMatches<'a> {
         .subcommand(
             SubCommand::with_name("classify-driver")
                 .about(&*getLocaleText("classify-driver", None))
+                .help_short("H")
                 .arg(
                     Arg::with_name(DRIVEPATH)
                         .value_name(DRIVEPATH)

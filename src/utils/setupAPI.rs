@@ -36,14 +36,13 @@ fn NullTest() {
 /// 获取硬件信息
 /// [参考资料](https://docs.microsoft.com/zh-cn/windows/win32/api/setupapi/nf-setupapi-setupdigetclassdevsexa)
 pub unsafe fn getDeviceInfo() {
-    let hdevInfo: *mut c_void =
-        SetupDiGetClassDevsW(null_mut(), PWSTR::NULL, HWND::NULL, DIGCF_ALLCLASSES);
+    let _hdevInfo: *mut c_void = SetupDiGetClassDevsW(null_mut(), PWSTR::NULL, HWND::NULL, DIGCF_ALLCLASSES);
 
     // if HANDLE::from(hdevInfo) == INVALID_HANDLE_VALUE {
     //     println!("错误码: {:?}", GetLastError());
     //     return;
     // }
-    println!("{:?}", hdevInfo);
+    // println!("{:?}", hdevInfo);
 }
 
 /// 扫描检测硬件改动

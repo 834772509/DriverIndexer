@@ -1,4 +1,4 @@
-use crate::cli::cli::{cli, ALLDDEVICE, DRIVECLASS, DRIVEPATH, INDEXATH};
+use crate::cli::cli::{cli, ALLDDEVICE, DRIVECLASS, DRIVEPATH, INDEXATH, EXTRACTDRIVER};
 use crate::i18n::getLocaleText;
 use crate::subCommand;
 use crate::utils::console::{writeConsole, ConsoleType};
@@ -88,6 +88,7 @@ pub fn matches(matches: ArgMatches<'_>) {
                     index,
                     matches.is_present(ALLDDEVICE),
                     class,
+                    matches.is_present(EXTRACTDRIVER),
                 );
             }
         } else {
@@ -102,6 +103,7 @@ pub fn matches(matches: ArgMatches<'_>) {
                 index,
                 matches.is_present(ALLDDEVICE),
                 class,
+                matches.is_present(EXTRACTDRIVER),
             );
         }
     }

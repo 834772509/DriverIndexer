@@ -13,16 +13,16 @@ pub enum ConsoleType {
 }
 
 pub fn writeConsole(consoleType: ConsoleType, message: &str) {
-    let title = match consoleType {
+    let title = match &consoleType {
         ConsoleType::Info => style(getLocaleText("Info", None)).cyan(),
         ConsoleType::Success => style(getLocaleText("Success", None)).green(),
         ConsoleType::Warning => style(getLocaleText("Warning", None)).yellow(),
         ConsoleType::Err => style(getLocaleText("Err", None)).red().on_black().bold(),
     };
-    println!("  {}      {}", title, message);
+    println!("  {}      {}", &title, message);
     if isDebug() {
         let time = Local::now().format("%T").to_string();
         // let tieme = SystemTime::now().duration_since(UNIX_EPOCH);
-        writeLogFile(&*LOG_PATH, &format!("{} DriverIndexer-{}", time, message));
+        writeLogFile(&*LOG_PATH, &format!("{} {}  {}", time, console::strip_ansi_codes(&*title.to_string()), message));
     }
 }

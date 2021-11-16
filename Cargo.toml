@@ -1,6 +1,6 @@
 [package]
 name = "DriverIndexer"
-version = "0.7.0"
+version = "1.0.0"
 authors = ["Fir"]
 edition = "2018"
 build = "build.rs"
@@ -17,6 +17,7 @@ windows = "0.9.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
+vc-ltl = "5.0.3-Beta1"
 clap = "~2.33"
 glob = "0.3.0"
 chardet = "0.2.4"

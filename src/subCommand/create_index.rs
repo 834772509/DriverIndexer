@@ -96,7 +96,7 @@ impl InfInfo {
 
         // 闭包函数-取INF配置项内容
         let getInfItemFun = |itemName: &str| {
-            if let Ok(re) = Regex::new(&*format!(r"{}=\S*", itemName)) {
+            if let Ok(re) = Regex::new(&*format!(r"{}=[^ \t\n\r\f\v;]*", itemName)) {
                 let contentList: Vec<_> = re.find_iter(&*infContent).collect();
                 for item in contentList.iter() {
                     let resultContent = item.as_str().replace(&*format!(r"{}=", itemName), "");

@@ -51,10 +51,8 @@ pub struct Asset;
 #[macro_use]
 extern crate lazy_static;
 lazy_static! {
-    pub static ref TEMP_PATH: PathBuf =
-        PathBuf::from(env::var("temp").unwrap()).join("DriverIndexer");
-    pub static ref LOG_PATH: PathBuf =
-        PathBuf::from(env::var("SYSTEMDRIVE").unwrap()).join(r"\Users\Log.txt");
+    pub static ref TEMP_PATH: PathBuf = PathBuf::from(env::var("temp").unwrap()).join("DriverIndexer");
+    pub static ref LOG_PATH: PathBuf = env::current_dir().unwrap().join(r"DriverIndexer.log");
 }
 
 fn main() {

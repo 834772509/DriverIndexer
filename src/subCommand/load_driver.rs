@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::{env, fs, thread};
 use crate::i18n::getLocaleText;
@@ -24,6 +23,7 @@ pub fn loadDriver(
     indexPath: Option<PathBuf>,
     isAllDevice: bool,
     driveClass: Option<String>,
+    onlyExtractDriver: bool,
 ) {
     // 创建临时目录
     if !TEMP_PATH.exists() {
@@ -103,18 +103,25 @@ pub fn loadDriver(
     for scanCount in 0..3 {
         // 扫描以发现新的硬件
         // devcon.rescan().unwrap();
-        unsafe {
-            setupAPI::rescan();
-        }
+        unsafe { setupAPI::rescan(); }
         // 获取真实硬件信息
-        let mut hwIDList = devcon.getRealIdInfo(driveClass.clone()).unwrap();
+        let mut hwIDList = devcon.getRealIdInfo(None).unwrap();
         if hwIDList.is_empty() {
             writeConsole(ConsoleType::Err, &*getLocaleText("no-device", None));
             return;
         }
+
+        // for item in hwIDList.iter() {
+        //     println!("{}", item.DeviceInstancePath);
+        // }
+
         // 判断是否需要获取有问题的硬件信息
         if !isAllDevice {
             hwIDList = devcon.getProblemIdInfo(hwIDList).unwrap();
+            if hwIDList.is_empty() {
+                writeConsole(ConsoleType::Err, &*getLocaleText("no-found-driver-currently", None));
+                return;
+            }
         }
 
         // 过滤前一次安装的硬件信息
@@ -132,12 +139,9 @@ pub fn loadDriver(
         }
 
         // 匹配硬件id
-        let matchHardwareAndDriver = getMatchInfo(&hwIDList, &infInfoList).unwrap();
+        let matchHardwareAndDriver = getMatchInfo(&hwIDList, &infInfoList, driveClass.clone());
         if scanCount == 0 && matchHardwareAndDriver.is_empty() {
-            writeConsole(
-                ConsoleType::Err,
-                &*getLocaleText("no-found-driver-currently", None),
-            );
+            writeConsole(ConsoleType::Err, &*getLocaleText("no-found-driver-currently", None));
             break;
         }
 
@@ -156,7 +160,7 @@ pub fn loadDriver(
             let infInfo = infInfo.clone();
 
             let task = thread::spawn(move || {
-                match loadDriverPackage(&driverPackPath, &driversPath, &hardware, &infInfo) {
+                match loadDriverPackage(&driverPackPath, &driversPath, &hardware, &infInfo, onlyExtractDriver) {
                     Ok(message) => {
                         writeConsole(ConsoleType::Success, &*message);
                     }
@@ -179,11 +183,19 @@ pub fn loadDriver(
     }
 }
 
+
+/// 加载驱动包
+/// # 参数
+/// 1. 驱动包路径
+/// 2. 驱动路径
+/// 3. 硬件信息
+/// 4. INF信息列表
 fn loadDriverPackage(
     driverPackPath: &Path,
     driversPath: &Path,
     hardware: &HwID,
     infInfo: &[InfInfo],
+    onlyExtractDriver: bool,
 ) -> Result<String, String> {
     lazy_static! {
         pub static ref ZIP: sevenZip = sevenZip::new().unwrap();
@@ -195,7 +207,7 @@ fn loadDriverPackage(
             let arg: HashMap<String, FluentValue> = hash_map!(
                 "class".to_string() => infInfoItem.Class.clone().into(),
                 "deviceName".to_string() => hardware.Name.clone().into(),
-                "deviceID".to_string() => infInfoItem.DriverList.get(0).unwrap_or(&"".to_string()).clone().into(),
+                "deviceID".to_string() => hardware.HardwareIDs.get(0).unwrap_or(&"".to_string()).clone().into(),
                 "driver".to_string() => infInfoItem.Inf.clone().into(),
                 "version".to_string() => infInfoItem.Version.clone().into(),
             );
@@ -210,6 +222,9 @@ fn loadDriverPackage(
                 } else {
                     return Err(getLocaleText("install-message", Some(&arg)));
                 }
+            }
+            if onlyExtractDriver {
+                return Ok(getLocaleText("install-message", Some(&arg)));
             }
 
             // 获取INF路径
@@ -243,15 +258,14 @@ fn loadDriverPackage(
 /// # 规则
 /// 1. 专用驱动优先级大于公版
 /// 2. 高版本优先级大于低版本
-pub fn getMatchInfo(
-    idInfo: &[HwID],
-    infInfoList: &[InfInfo],
-) -> Result<Vec<(HwID, Vec<InfInfo>)>, Box<dyn Error>> {
-// 提示：
-// 循环次数少的放在外层，减少内层变量的操作次数
-// 一个设备信息 对应 多个匹配驱动信息
+pub fn getMatchInfo<T1>(idInfo: &[HwID], infInfoList: &[InfInfo], driveClass: T1) -> Vec<(HwID, Vec<InfInfo>)>
+    where T1: Into<Option<String>> + Clone,
+{
+    // 提示：
+    // 循环次数少的放在外层，减少内层变量的操作次数
+    // 一个设备信息 对应 多个匹配驱动信息
 
-// 当前系统架构
+    // 当前系统架构
     let currentArch = match env::consts::ARCH {
         "x86" => "NTx86",
         "x86_64" => "NTamd64",
@@ -259,21 +273,27 @@ pub fn getMatchInfo(
         _ => "",
     };
 
-// 闭包函数-匹配
+    // 闭包函数-匹配
     let matchFn = |haID: &String| {
         let mut macthList: Vec<InfInfo> = Vec::new();
-// 遍历INF信息列表
+        // 遍历INF信息列表
         for infInfoItem in infInfoList.iter() {
-// 如果INF不适用当前系统则进行匹配下一个INF
+            // 如果INF不适用当前系统则进行匹配下一个INF
             if !infInfoItem.Arch.contains(&currentArch.to_string()) {
                 continue;
+            }
+            // 如果指定了驱动类别且类别不匹配则匹配下一个INF
+            if let Some(class) = driveClass.clone().into() {
+                if class != infInfoItem.Class.to_lowercase() {
+                    continue;
+                }
             }
 
             let mut matchInfInfo = InfInfo {
                 DriverList: vec![],
                 ..infInfoItem.clone()
             };
-// 遍历INF中的硬件id
+            // 遍历INF中的硬件id
             let mut driverList: Vec<String> = infInfoItem
                 .DriverList
                 .clone()
@@ -285,35 +305,35 @@ pub fn getMatchInfo(
                 macthList.push(matchInfInfo.clone());
             }
         }
-// 排序：高版本优先级大于低版本
+        // 排序：高版本优先级大于低版本
         macthList.sort_by(|b, a| compareVersiopn(&*a.Version, &*b.Version));
         macthList
     };
 
-// 匹配驱动信息
+    // 匹配驱动信息
     let mut macthInfo: Vec<(HwID, Vec<InfInfo>)> = Vec::new();
 
-// 遍历有问题的硬件id信息
+    // 遍历有问题的硬件id信息
     for idInfo in idInfo.iter() {
-// 创建匹配信息列表
+        // 创建匹配信息列表
         let mut macthList: Vec<InfInfo> = Vec::new();
 
-// 优先对比硬件id
+        // 优先对比硬件id
         for haID in idInfo.HardwareIDs.iter() {
             macthList.append(&mut matchFn(haID));
         }
 
-// 对比兼容id
+        // 对比兼容id
         for haID in idInfo.CompatibleIDs.iter() {
             macthList.append(&mut matchFn(haID));
         }
 
-// 没有匹配到该设备的驱动信息，则匹配下一个设备
+        // 没有匹配到该设备的驱动信息，则匹配下一个设备
         if macthList.is_empty() {
             continue;
         }
 
         macthInfo.push((idInfo.clone(), macthList));
     }
-    Ok(macthInfo)
+    macthInfo
 }
