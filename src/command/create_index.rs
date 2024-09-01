@@ -8,15 +8,13 @@ use std::{fs, thread};
 use crate::i18n::getLocaleText;
 use crate::utils::console::{writeConsole, ConsoleType};
 use crate::utils::sevenZIP::sevenZip;
-use crate::utils::util::getFileList;
+use crate::utils::util::{getFileList};
 use crate::TEMP_PATH;
 use chardet::{charset2encoding, detect};
 use encoding::label::encoding_from_whatwg_label;
 use encoding::DecoderTrap;
 use fluent_templates::fluent_bundle::FluentValue;
-use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use serde::{Deserialize, Serialize};
-
 
 /// INF驱动信息
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -29,8 +27,6 @@ pub struct InfInfo {
     pub(crate) Class: String,
     /// 驱动位宽
     pub(crate) Arch: Vec<String>,
-    /// 驱动厂商
-    // pub(crate) Provider: String,
     /// 驱动日期
     pub(crate) Date: String,
     /// 驱动版本
@@ -45,92 +41,78 @@ impl InfInfo {
     /// 1. inf 基本路径（父路径）
     /// 2. inf 文件路径
     pub fn parsingInfFile(basePath: &Path, infFile: &Path) -> Result<InfInfo, Box<dyn Error>> {
-        // let regExpression = [r"PCI\\.*?&.*?&[^; \f\n\r\t\v]+", r"USB\\.*?&[^; \f\n\r\t\v]+", ];
         lazy_static! {
-            // 所有类别取自 [HKLM\SYSTEM\ControlSet001\Enum]
-            static ref DRIVERTYPE: [&'static str; 29] = ["1394","ACPI", "ACPI_HAL","AVC", "BTH", "BTHENUM", "BTHHFENUM", "DISPLAY", "HDAUDIO", "HID", "HTREE", "PCI","PCMCIA", "ROOT", "SCSI","SCMLD", "SD","SERENUM","Sensors", "STORAGE", "SW", "SWD", "TERMINPUT_BUS", "TS_USB_HUB_Enumerator", "UEFI", "UMB", "USB", "USBSTOR","VMBUS"];
-            // 驱动ID匹配正则表达式
-            static ref REGEXPRESSION: Vec<String> = DRIVERTYPE.iter().map(|&item| format!(r",{}\\[^,; \f\n\r\t\v]+", item)).collect();
-            // 编译正则表达式（确保正则表达式只被编译一次）
-            static ref REGEXPRESSIONLIST: Vec<Regex> = REGEXPRESSION.iter().map(|item| RegexBuilder::new(item).case_insensitive(true).build().unwrap()).collect();
             // 系统架构
-            static ref SYSTEMARCH: [&'static str; 5] = ["NTx86", "NTia64", "NTarm", "NTarm64", "NTamd64"];
-            static ref REGSYSTEMARCHIST: RegexSet = RegexSetBuilder::new(SYSTEMARCH.iter()).case_insensitive(true).build().unwrap();
+            static ref SYSTEMARCH: [&'static str; 5] = ["NTx86", "NTia64","NTamd64", "NTarm", "NTarm64"];
         }
 
         // 读取INF文件
-        let mut file = File::open(&infFile)?;
+        let mut file = File::open(infFile)?;
         let mut fileBuf: Vec<u8> = Vec::new();
         file.read_to_end(&mut fileBuf)?;
 
         // 自动识别编码并以UTF-8读取
         let result = detect(&fileBuf);
-        let coder = encoding_from_whatwg_label(charset2encoding(&result.0)).unwrap();
+        let coder = encoding_from_whatwg_label(charset2encoding(&result.0)).ok_or("Failed encoding")?;
         let infContent = coder.decode(&fileBuf, DecoderTrap::Ignore)?;
 
         // 去除INF内的所有 空格 与 tab符
         let infContent = infContent.replace(" ", "").replace("	", "");
 
         let mut idList: Vec<String> = Vec::new();
-        // let idList: HashSet<String>;
 
-        // 遍历正则表达式
-        for re in REGEXPRESSIONLIST.iter() {
-            // 匹配正则表达式
-            let hwIdList: Vec<_> = re.find_iter(&*infContent).collect();
+        let mut Class = String::new();
+        let mut Date = String::new();
+        let mut Version = String::new();
+        let mut Arch: Vec<String> = Vec::new();
 
-            // let aaa = hwIdList.iter()
-            //     // 删除逗号、转为大写
-            //     .map(|id| id.as_str().replace(",", "").to_uppercase())
-            //     .collect::<HashSet<String>>();
-            //     // .collect::<Vec<String>>();
-            for id in hwIdList.iter() {
-                // 删除逗号、转为大写
-                let id = id.as_str().replace(",", "").to_uppercase();
-                // 检测是否重复
-                if !idList.contains(&id) {
-                    idList.push(id);
+        // 按行读取
+        for line in infContent.lines() {
+            // 空行、行首注释
+            if line.is_empty() || line.starts_with(";") { continue; }
+            // 行尾注释
+            let line = line.split(';').next().unwrap_or(line).trim();
+
+            // 驱动类别
+            if let Some(class) = line.strip_prefix("Class=") {
+                Class = String::from(class);
+            }
+            // 驱动版本、日期
+            if let Some(dateAndVersion) = line.strip_prefix("DriverVer=") {
+                let dateAndVersion: Vec<&str> = dateAndVersion.split(',').collect();
+                Date = dateAndVersion.get(0).unwrap_or(&"").to_string();
+                Version = dateAndVersion.get(1).unwrap_or(&"").to_string();
+            }
+            // 驱动平台
+            for item in SYSTEMARCH.iter() {
+                if line.to_uppercase().contains(&*format!(".{}", item).to_uppercase()) && !Arch.contains(&item.to_string()) {
+                    Arch.push(item.to_string());
+                }
+            }
+            // 获取硬件ID
+            if let Some(equal_pos) = line.find('=') {
+                if let Some(comma_pos) = line[equal_pos..].find(',') {
+                    // 获取逗号之后的部分
+                    let potential_id = &line[(equal_pos + comma_pos + 1)..].trim();
+                    // 逗号分隔多个硬件ID
+                    for id in potential_id.split(",") {
+                        // 检查是否包含反斜杠或开头是否为星号
+                        if id == "\\" || (!id.contains('\\') && !id.starts_with('*')) {
+                            continue;
+                        }
+                        // 检查是否符合硬件ID格式
+                        if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '\\' || c == '&' || c == '_' || c == '.' || c == '-' || c == '*') {
+                            continue;
+                        }
+                        // 转为大写
+                        let id = id.to_uppercase();
+                        if !idList.contains(&id) {
+                            idList.push(id);
+                        }
+                    }
                 }
             }
         }
-
-        // 闭包函数-取INF配置项内容
-        let getInfItemFun = |itemName: &str| {
-            if let Ok(re) = Regex::new(&*format!(r"{}=[^ \t\n\r\f\v;]*", itemName)) {
-                let contentList: Vec<_> = re.find_iter(&*infContent).collect();
-                for item in contentList.iter() {
-                    let resultContent = item.as_str().replace(&*format!(r"{}=", itemName), "");
-                    return resultContent;
-                }
-            }
-            "".to_string()
-        };
-
-        // 获取驱动类别
-        let Class = getInfItemFun("Class");
-
-        // 获驱动适用系统架构
-        let Arch: Vec<String> = REGSYSTEMARCHIST
-            .matches(&*infContent)
-            .into_iter()
-            .map(|index| SYSTEMARCH[index].to_string())
-            .collect();
-
-        // 获取驱动版本、日期
-        let dateAndVersion = getInfItemFun("DriverVer");
-        let dateAndVersion: Vec<&str> = dateAndVersion.split(',').collect();
-        let Date = dateAndVersion.get(0).unwrap_or(&"").to_string();
-        let Version = dateAndVersion.get(1).unwrap_or(&"").to_string();
-
-        // 获取驱动厂商
-        // let provider = infContent.getStringCenter("Provider=", "\n").unwrap_or("".to_string()).replace("\r", "").replace("%", "");
-        // let provider = infContent.getStringCenter(&format!("{}=", provider), "\n").unwrap_or(provider).replace("\r", "").replace("\"", "")
-        //     .replace("Corporation", "")
-        //     .replace("SemiconductorCorp.", "")
-        //     .replace("TechnologyCorp.", "")
-        //     .replace(",Inc.", "")
-        //     .replace("®", "")
-        //     .replace("(R)", "");
 
         // 获取驱动文件相对路径
         let parentPath = infFile.parent().unwrap().strip_prefix(basePath)?;
@@ -146,7 +128,6 @@ impl InfInfo {
                 .unwrap(),
             Class,
             Arch,
-            // Provider: provider,
             Date,
             Version,
             DriverList: idList,
@@ -194,13 +175,13 @@ impl InfInfo {
         let mut indexFile = File::open(indexPath)?;
         let mut indexContent = String::new();
         indexFile.read_to_string(&mut indexContent)?;
-        let json: Vec<InfInfo> = serde_json::from_str(&*indexContent)?;
+        let json: Vec<InfInfo> = serde_json::from_str(&indexContent)?;
         Ok(json)
     }
 }
 
-pub fn createIndex(basePath: &Path, saveIndexPath: &Path) {
-    writeConsole(ConsoleType::Info, &*getLocaleText("processing", None));
+pub fn createIndex(drivePath: &Path, password: Option<&str>, saveIndexPath: &Path) {
+    writeConsole(ConsoleType::Info, &getLocaleText("processing", None));
 
     let zip = sevenZip::new().unwrap();
 
@@ -211,29 +192,40 @@ pub fn createIndex(basePath: &Path, saveIndexPath: &Path) {
     // 保存索引路径
     let indexPath;
 
-    if basePath.is_dir() {
+    if drivePath.is_dir() {
         // 从驱动目录中创建索引文件
-        infList = getFileList(&basePath, "*.inf").unwrap();
-        infParentPath = basePath.to_path_buf();
+        infList = getFileList(drivePath, "*.inf").unwrap();
+        infParentPath = drivePath.to_path_buf();
         // 如果输入的索引路径是相对路径，则令实际路径为驱动目录所在路径
         indexPath = if saveIndexPath.is_relative() {
-            basePath.join(&saveIndexPath)
+            drivePath.join(saveIndexPath)
         } else {
             saveIndexPath.to_path_buf()
         };
     } else {
         // 从文件中创建索引文件
-        infParentPath = TEMP_PATH.join(basePath.file_stem().unwrap());
+        infParentPath = TEMP_PATH.join(drivePath.file_stem().unwrap());
         // 解压INF文件
-        zip.extractFilesFromPathRecurseSubdirectories(&basePath, "*.inf", &infParentPath)
-            .unwrap();
+        if !zip.extractFilesFromPathRecurseSubdirectories(drivePath, password, "*.inf", &infParentPath).unwrap() {
+            writeConsole(
+                ConsoleType::Err,
+                &getLocaleText("driver-unzip-failed", None),
+            );
+            return;
+        }
+
         infList = getFileList(&infParentPath, "*.inf").unwrap();
         // 如果输入的索引路径是相对路径，则令实际实际为驱动包所在路径
         indexPath = if saveIndexPath.is_relative() {
-            basePath.parent().unwrap().join(&saveIndexPath)
+            drivePath.parent().unwrap().join(saveIndexPath)
         } else {
             saveIndexPath.to_path_buf()
         };
+    }
+
+    if infList.is_empty() {
+        writeConsole(ConsoleType::Err, &getLocaleText("no-inf-find", None));
+        return;
     }
 
     let mut infInfoList: Vec<InfInfo> = Vec::new();
@@ -248,7 +240,7 @@ pub fn createIndex(basePath: &Path, saveIndexPath: &Path) {
                 blankCount += 1;
                 writeConsole(
                     ConsoleType::Warning,
-                    &*getLocaleText("no-hardware", Some(&arg)),
+                    &getLocaleText("no-hardware", Some(&arg)),
                 );
                 continue;
             }
@@ -258,13 +250,13 @@ pub fn createIndex(basePath: &Path, saveIndexPath: &Path) {
             ErrorCount += 1;
             writeConsole(
                 ConsoleType::Err,
-                &*getLocaleText("inf-parsing-err", Some(&arg)),
+                &getLocaleText("inf-parsing-err", Some(&arg)),
             );
         }
     }
 
     if let Err(_e) = InfInfo::saveIndexFromJson(&infInfoList, &indexPath) {
-        writeConsole(ConsoleType::Err, &*getLocaleText("index-save-failed", None));
+        writeConsole(ConsoleType::Err, &getLocaleText("index-save-failed", None));
         return;
     }
     let arg: HashMap<String, FluentValue> = hash_map!(
@@ -273,11 +265,7 @@ pub fn createIndex(basePath: &Path, saveIndexPath: &Path) {
         "error".to_string() => ErrorCount.to_string().into(),
         "blankCount".to_string() => blankCount.to_string().into(),
     );
-    writeConsole(ConsoleType::Info, &*getLocaleText("total-info", Some(&arg)));
-    let arg: HashMap<String, FluentValue> =
-        hash_map!("path".to_string() => indexPath.to_str().unwrap().into());
-    writeConsole(
-        ConsoleType::Success,
-        &*getLocaleText("saveInfo", Some(&arg)),
-    );
+    writeConsole(ConsoleType::Info, &getLocaleText("total-info", Some(&arg)));
+    let arg: HashMap<String, FluentValue> = hash_map!("path".to_string() => indexPath.to_str().unwrap().into());
+    writeConsole(ConsoleType::Success, &getLocaleText("saveInfo", Some(&arg)));
 }

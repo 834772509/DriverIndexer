@@ -3,11 +3,14 @@ Success = 成功
 Warning = 警告
 Err = 错误
 
+temp-remove-failed=临时目录删除失败
+
 # 创建索引
 processing = 正在处理中，请稍候······
 no-hardware = 未检测到此文件中的硬件ID: { $path }
 inf-parsing-err = INF解析错误: { $path }
 index-save-failed = 索引文件保存失败
+no-inf-find = 没有找到驱动信息
 total-info = 总 {$total} 个项目，已处理 {$success} 个项目，{$error} 个项目无法处理，{$blankCount} 个项目可能没有硬件ID信息
 saveInfo = 驱动索引保存在 { $path }
 
@@ -29,6 +32,10 @@ driver-install-success = 驱动程序安装成功
 
 # 整理驱动
 Drivers-finishing-complete = 驱动整理成功
+
+# 创建驱动包程序
+Driver-finishing-create = 驱动包程序创建成功
+Pack-Driver-failed = 创建驱动包程序失败
 
 # 驱动类别
 # ADAPTER = 适配器

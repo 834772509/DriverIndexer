@@ -23,6 +23,6 @@ pub fn writeConsole(consoleType: ConsoleType, message: &str) {
     if isDebug() {
         let time = Local::now().format("%T").to_string();
         // let tieme = SystemTime::now().duration_since(UNIX_EPOCH);
-        writeLogFile(&*LOG_PATH, &format!("{} {}  {}", time, console::strip_ansi_codes(&*title.to_string()), message));
+        writeLogFile(&LOG_PATH, &format!("{} {}  {}", time, console::strip_ansi_codes(&title.to_string()), message)).ok();
     }
 }

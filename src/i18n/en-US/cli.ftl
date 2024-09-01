@@ -31,14 +31,21 @@ save-index-path = Index file save location
 load-driver = Install the matching driver. Automatically match the driver in the compressed package, decompress and install
 package-path = Compressed package path
 index-path = index file path
+package-password = Compressed package password
 match-all-device = Match all device
 driver-category = Set the install driver category
 only-unzip = Only unzip the driver without installing
+offline-import = Offline import driver
 
 ## classify-driver
 classify-driver = sort out the driver
+
+## create-driver
+create-driver = Create a driver package. Packages are packaged with programs and drivers for easy distribution
+driver-package-program-path = Driver package program path
 
 # validator
 path-not-exist = The path does not exist, please make sure the entered directory exists
 dir-not-exist = The directory does not exist, please make sure the entered directory exists
 not-driver-category = The driver category is incorrect, please enter the correct driver category
+not-system-path = The path is not the system root directory, please ensure that the input directory exists in the operating system

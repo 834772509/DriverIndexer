@@ -39,7 +39,7 @@ The following are the recommended downloading websites for the driver package (a
 
 ## Software Architecture
 
-Use `Rust` to write, call `Devcon.exe` to obtain hardware information, and use API to install device drivers, `VC-LTL` compilation.
+Use `Rust` to write, call `Devcon.exe` to obtain hardware information, and use API to install device drivers.
 
 ### Drive matching rules
 
@@ -48,10 +48,6 @@ Use `Rust` to write, call `Devcon.exe` to obtain hardware information, and use A
 3. The higher version has priority over the lower version
 4. Three matches (to prevent unsuccessful installation of some drivers)
 
-### What language is `Rust`?
-
-`Rust` is a system-level programming language, which is slightly more efficient than C++ and comparable to C language.
-
 ## Instructions for use
 
 This program is a command line program, so it needs to be run with parameters after it. For example, double-clicking the program directly will cause a "flash back" phenomenon. You can run it through terminals such as `cmd` and `PowerShell`.  
@@ -59,7 +55,7 @@ Note: Please run the terminal as an **administrator**.
 
 ### Create Index
 
-`DriverIndexer.exe create-index DrivePath IndexFileSavePath`
+`DriverIndexer.exe create-index DrivePath IndexFileSavePath [-p UnzipPassword]`
 
 - Create index from file
     -`DriverIndexer.exe create-index D:\netcard.7z index.json`
@@ -70,7 +66,7 @@ Note: Please run the terminal as an **administrator**.
 
 ### Load the driver
 
-Simple to use(No driver index): `DriverIndexer.exe load-driver drivePath/drivePackagePath`
+`DriverIndexer.exe load-driver drivePath/drivePackagePath [-p UnzipPassword] [--AllDevice] [--ExtractDriver] [--DriveClass DriveClass]`
 
 - No driver index: `DriverIndexer.exe load-driver drivePath/drivePackagePath`
   - `DriverIndexer.exe load-driver D:\netcard`
@@ -94,7 +90,22 @@ Simple to use(No driver index): `DriverIndexer.exe load-driver drivePath/drivePa
 
 - `DriverIndexer.exe classify-driver D:\netcard`
 
+### Create driver package program
+
+> The driver package program merges `DriverIndexer` with the driver package to generate an exe binary executable file. The generated executable file will automatically read its own driver package and only decompress the required driver (avoid secondary decompression).
+
+Note: **You cannot set a password for the driver package**.
+
+`DriverIndexer.exe create-driver driver path output path`
+
+- Create a program driver package from a file
+  - `DriverIndexer.exe create-driver D:\netcard.7z D:\netcard.exe`
+- Create a program driver package from a directory
+  - `DriverIndexer.exe create-driver D:\netcard D:\netcard.exe`
+
 ### Open log
+
+The logs will be stored in the program directory: `\DriverIndexer.log`
 
 `DriverIndexer.exe commandParameter --debug`
 

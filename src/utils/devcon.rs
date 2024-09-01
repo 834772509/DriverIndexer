@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use crate::utils::util::{writeEmbedFile, String_utils};
 use crate::TEMP_PATH;
+use windows_version::OsVersion;
 
 /// 硬件信息
 #[derive(Debug, Clone, Eq)]
@@ -38,7 +39,7 @@ impl Devcon {
             fs::create_dir(&*TEMP_PATH)?;
         }
         let devconPath = TEMP_PATH.join("devcon.exe");
-        writeEmbedFile("devcon.exe", &devconPath)?;
+        writeEmbedFile(if OsVersion::current().major == 5 { "devcon-nt5.exe" } else { "devcon.exe" }, &devconPath)?;
         Ok(Devcon { devconPath })
     }
 
@@ -46,8 +47,8 @@ impl Devcon {
     /// #参数
     /// 1. 驱动类别（注意：只能获取已安装驱动的设备）
     pub fn getRealIdInfo<T1>(&self, driveClass: T1) -> Result<Vec<HwID>, Box<dyn Error>>
-        where
-            T1: Into<Option<String>>,
+    where
+        T1: Into<Option<String>>,
     {
         let driveClass = driveClass.into();
         let hwidType = if driveClass.is_some() {
@@ -77,7 +78,7 @@ impl Devcon {
         let contentLine = content.replace("\r\n        ", SUBDELIMITER);
         let contentLine = contentLine.replace("\r\n    ", DELIMITER);
         let contentLine = contentLine.replace("  ", "");
-        let contentLine = contentLine.replace("\r\n", &*format!("{}\r\n", DELIMITER));
+        let contentLine = contentLine.replace("\r\n", &format!("{}\r\n", DELIMITER));
 
         let mut HwIDList: Vec<HwID> = Vec::new();
         // 通过换行符分割遍历
@@ -102,7 +103,6 @@ impl Devcon {
                 .replace(DELIMITER, "");
             let hardwareIDList: Vec<String> = hardwareIDs
                 .split(SUBDELIMITER)
-                .into_iter()
                 .filter(|&hardwareID| !hardwareID.is_empty())
                 .map(|hardwareID| hardwareID.to_string())
                 .collect();
@@ -115,7 +115,6 @@ impl Devcon {
                 .replace(DELIMITER, "");
             let CompatibleIDList: Vec<String> = CompatibleIDs
                 .split(SUBDELIMITER)
-                .into_iter()
                 .filter(|&CompatibleID| !CompatibleID.is_empty())
                 .map(|CompatibleID| CompatibleID.to_string())
                 .collect();

@@ -5,11 +5,20 @@
 mod Tests {
     use crate::utils::devcon::Devcon;
     use crate::utils::setupAPI;
-    use crate::utils::util::compareVersiopn;
+    use crate::utils::util::{compareVersiopn, String_utils};
     use std::path::{PathBuf, Path};
     use std::time::{SystemTime, UNIX_EPOCH};
-    use std::{mem, thread};
-    use crate::subCommand::create_index::InfInfo;
+    use std::{env, mem, thread};
+    use std::error::Error;
+    use std::fs::File;
+    use std::slice::Windows;
+    use crate::command::create_index::InfInfo;
+    use encoding::all::UTF_16LE;
+    use encoding::{Encoding, EncoderTrap};
+    use crate::i18n::getLocaleText;
+    use crate::utils::dismAPI::OfflineImportDriver;
+    use crate::utils::drvstoreAPI::DriverStore;
+    use crate::utils::sevenZIP::sevenZip;
 
     // 文件解压测试
     #[test]
@@ -21,7 +30,7 @@ mod Tests {
         let outPath = PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\outPath");
 
         let zip = sevenZip::new().unwrap();
-        println!("{:?}", zip.extractFilesFromPath(&basePath, "", &outPath));
+        println!("{:?}", zip.extractFilesFromPath(&basePath, None,"", &outPath));
     }
 
     // 文件遍历测试
@@ -77,14 +86,26 @@ mod Tests {
     // INF解析测试
     #[test]
     fn parsingInfFileTest() {
-        use crate::subCommand::create_index::InfInfo;
+        use crate::command::create_index::InfInfo;
+
+        // for id in r"IntcAzAudModelCopyFiles=10,system32\drivers".split(",") {
+        //     if !id.contains("\\") { continue }
+        //     if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '\\' || c == '&' || c == '_' || c == '.' || c == '-') {
+        //         println!("不符合");
+        //         return;
+        //     }
+        //     // 转为大写
+        //     let id = id.to_uppercase();
+        //     println!("{}", id);
+        // }
+        // return;
 
         let infPath = PathBuf::from(
-            r"C:\Users\Administrator\Desktop\NETwbw02.INF",
+            r"D:\UserData\Desktop\51xx_10.0.18362.31253\RtsUer.inf",
         );
 
         println!(
-            "{:#?}",
+            "{:?}",
             InfInfo::parsingInfFile(&infPath.parent().unwrap(), &infPath).unwrap()
         );
     }
@@ -92,14 +113,14 @@ mod Tests {
     // 正则表达式测试
     #[test]
     fn reTest() {
-        use regex::RegexSet;
-        use regex::RegexSetBuilder;
-
-        let reSet = RegexSetBuilder::new(&["USB", "45646"])
-            .case_insensitive(true)
-            .build()
-            .unwrap();
-        let _aaa = reSet.matches("USB SADFASDF SDAFFDAS 45646");
+        // use regex::RegexSet;
+        // use regex::RegexSetBuilder;
+        //
+        // let reSet = RegexSetBuilder::new(&["USB", "45646"])
+        //     .case_insensitive(true)
+        //     .build()
+        //     .unwrap();
+        // let _aaa = reSet.matches("USB SADFASDF SDAFFDAS 45646");
 
         // let bbb mut = aaa.into_iter();
         // println!("{:?}", bbb.next());
@@ -113,8 +134,8 @@ mod Tests {
     // 驱动匹配测试
     #[test]
     fn matchDriverTest() {
-        use crate::subCommand::create_index::InfInfo;
-        use crate::subCommand::load_driver::getMatchInfo;
+        use crate::command::create_index::InfInfo;
+        use crate::command::load_driver::getMatchInfo;
         use crate::utils::util::getFileList;
 
         Devcon::new()
@@ -155,7 +176,7 @@ mod Tests {
     // 驱动加载测试
     #[test]
     fn loadDriverTest() {
-        use crate::subCommand::load_driver::loadDriver;
+        use crate::command::load_driver::loadDriver;
         use crate::utils::devcon::Devcon;
 
         Devcon::new()
@@ -171,13 +192,13 @@ mod Tests {
         let index = None;
         // let index = Some(PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\Network\USB无线网卡驱动.json"));
 
-        loadDriver(&basePath, index, false, None, false);
+        loadDriver(&basePath, None,index, false, None, false);
     }
 
     // 驱动整理测试
     #[test]
     fn classifyDriverTest() {
-        use crate::subCommand::classify_driver::classify_driver;
+        use crate::command::classify_driver::classify_driver;
 
         let basePath =
             PathBuf::from(r"C:\Users\Administrator.W10-20201229857\Desktop\万能网卡驱动-驱动精灵");
@@ -326,7 +347,17 @@ mod Tests {
         use crate::utils::drvstoreAPI::*;
 
         unsafe {
-            DriverStoreOpen();
+            let driverStore = DriverStore::new().unwrap();
+
+            let systemPath = Path::new(r"D:\Project\FirPE\Mount");
+            let installInfPath = Path::new(r"D:\Project\FirPE\WimBuilder2插件\Projects\WIN10XPE\z-FirPE\Driver\iphone\netaapl64\netaapl64.inf");
+            let delInfPath = Path::new(r"viostor.inf");
+
+            // let driverStoreHWID = driverStore.OpenDriverStore(systemPath);
+            // println!("打开驱动库: {:?}", driverStoreHWID);
+            println!("离线删除驱动: {:?}", driverStore.DeleteDriverStoreDriver(systemPath, delInfPath));
+            // println!("增加驱动: {:?}", driverStore.addDriverStorePackage(systemPath, inf));
+            // println!("关闭驱动库: {:?}", driverStore.CloseDriverStore(driverStoreHWID.unwrap()));
         }
     }
 
@@ -351,5 +382,11 @@ mod Tests {
 
         let value: u32 = setup.get_value("SystemSetupInProgress").unwrap();
         println!("{:?}", value);
+    }
+
+    #[test]
+    fn tests() {
+        let result = OfflineImportDriver(&Path::new(r"D:\Project\FirPE\Mount"), &Path::new(r"D:\Project\FirPE\WimBuilder2插件\Projects\WIN10XPE\z-FirPE\Driver\KVM\viostor"));
+        println!("{:?}", result);
     }
 }

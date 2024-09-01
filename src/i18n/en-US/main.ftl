@@ -3,11 +3,14 @@ Success = Success
 Warning = Warning
 Err = Error{"  "}
 
+temp-remove-failed=Temporary directory deletion failed
+
 # create-index
 processing = In process, please wait……
 no-hardware = The hardware id in this file is not detected: { $path }
 inf-parsing-err = INF parsing error: { $path }
 index-save-failed = Failed to save index file
+no-inf-find = No driver information found
 total-info = Total {$total} items，Processed {$success} items，{$error} items failed to process，{$blankCount} items may not have hardware id information
 saveInfo = The drive index is saved in { $path }
 
@@ -29,6 +32,10 @@ driver-install-success = Driver installed successfully
 
 # classify-driver
 Drivers-finishing-complete = Drivers finishing complete
+
+# create-driver
+Driver-finishing-create = Driver package program created successfully
+Pack-Driver-failed = Driver package creation failed
 
 # Drive category
 # ADAPTER = ADAPTER

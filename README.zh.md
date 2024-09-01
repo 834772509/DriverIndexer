@@ -39,7 +39,7 @@
 
 ## 软件架构
 
-使用`Rust`编写，调用`Devcon.exe`获取硬件信息，使用API安装设备驱动，`VC-LTL`编译。
+使用`Rust`编写，调用`Devcon.exe`获取硬件信息，使用API安装设备驱动。
 
 ### 驱动匹配规则
 
@@ -48,10 +48,6 @@
 3. 高版本优先级大于低版本
 4. 三次匹配（防止部分驱动未安装成功）
 
-### `Rust`是什么语言？
-
-`Rust`是一门系统级编程语言，效率略高于C++，与C语言不相上下。
-
 ## 使用说明
 
 本程序为命令行程序，故需要在其后面接参数运行，如直接双击程序将会出现“闪退”现象，您可通过`cmd`、`PowerShell`等终端来运行。  
@@ -59,7 +55,7 @@
 
 ### 创建索引
 
-`DriverIndexer.exe create-index 驱动路径 索引文件保存路径`
+`DriverIndexer.exe create-index 驱动路径 索引文件保存路径 [-p 解压密码]`
 
 - 从文件中创建索引
     - `DriverIndexer.exe create-index D:\netcard.7z index.json`
@@ -70,7 +66,7 @@
 
 ### 加载驱动
 
-简单使用（无驱动索引）: `DriverIndexer.exe load-driver 驱动路径/驱动包路径`
+`DriverIndexer.exe load-driver 驱动路径/驱动包路径 [-p 解压密码] [--AllDevice] [--ExtractDriver] [--DriveClass 驱动类别]`
 
 - 无驱动索引: `DriverIndexer.exe load-driver 驱动路径/驱动包路径`
   - `DriverIndexer.exe load-driver D:\netcard`
@@ -85,7 +81,7 @@
   - `DriverIndexer.exe load-driver D:\AllDriver.7z --DriveClass Display`
 - 匹配所有设备：`DriverIndexer.exe load-driver 驱动路径/驱动包路径 --AllDevice`
   - `DriverIndexer.exe load-driver D:\netcard.7z --AllDevice`
-- 仅解压驱动：`DriverIndexer.exe load-driver 驱动路径/驱动包路径 --ExtractDriver 解压目录`
+- 仅解压驱动：`DriverIndexer.exe load-driver 驱动包路径 --ExtractDriver 解压目录`
   - `DriverIndexer.exe load-driver D:\netcard.7z --ExtractDriver D:\netcard`
 
 ### 整理驱动
@@ -94,7 +90,22 @@
 
 - `DriverIndexer.exe classify-driver D:\netcard`
 
+### 创建驱动包程序
+
+> 驱动包程序是将`DriverIndexer`与驱动包合并，生成exe二进制可执行文件，生成的可执行文件将自动读取自身驱动包，仅解压所需驱动(避免二次解压)。
+
+注意：**驱动包不能设置密码**。
+
+`DriverIndexer.exe create-driver 驱动路径 输出路径`
+
+- 从文件中创建程序驱动包
+  - `DriverIndexer.exe create-driver D:\netcard.7z D:\netcard.exe`
+- 从目录中创建程序驱动包
+  - `DriverIndexer.exe create-driver D:\netcard D:\netcard.exe`
+
 ### 开启日志
+
+日志将会保存在程序目录下：`\DriverIndexer.log`
 
 `DriverIndexer.exe 命令 参数 --debug`
 

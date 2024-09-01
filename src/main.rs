@@ -8,7 +8,7 @@
 mod macros;
 mod cli;
 mod i18n;
-mod subCommand;
+mod command;
 mod utils;
 
 mod bindings {
@@ -21,29 +21,33 @@ mod tests;
 #[macro_use]
 extern crate clap;
 
-use crate::utils::console::{writeConsole, ConsoleType};
-use remove_dir_all::remove_dir_all;
-use rust_embed::RustEmbed;
-use std::env;
+use std::{env};
+use std::env::temp_dir;
 use std::path::PathBuf;
+use crate::utils::console::{writeConsole, ConsoleType};
+use crate::i18n::getLocaleText;
+use crate::utils::sevenZIP::sevenZip;
+use crate::utils::util::getTmpName;
+use remove_dir_all::remove_dir_all;
+use rust_embed::Embed;
 
 // 设置静态资源
 
 // x64平台
 #[cfg(target_arch = "x86_64")]
-#[derive(RustEmbed)]
+#[derive(Embed)]
 #[folder = "./assets-x64"]
 pub struct Asset;
 
 // x86平台
 #[cfg(target_arch = "x86")]
-#[derive(RustEmbed)]
+#[derive(Embed)]
 #[folder = "./assets-x86"]
 pub struct Asset;
 
 // ARM平台
-#[cfg(target_arch = "arm")]
-#[derive(RustEmbed)]
+#[cfg(target_arch = "aarch64")]
+#[derive(Embed)]
 #[folder = "./assets-ARM64"]
 pub struct Asset;
 
@@ -51,17 +55,23 @@ pub struct Asset;
 #[macro_use]
 extern crate lazy_static;
 lazy_static! {
-    pub static ref TEMP_PATH: PathBuf = PathBuf::from(env::var("temp").unwrap()).join("DriverIndexer");
+    pub static ref TEMP_PATH: PathBuf = temp_dir().join(getTmpName(".tmp","",6));
     pub static ref LOG_PATH: PathBuf = env::current_dir().unwrap().join(r"DriverIndexer.log");
 }
 
 fn main() {
+    // 检测到当前程序内嵌驱动包时则自动加载
+    if command::create_driver::selfDriver() {
+        remove_dir_all(&*TEMP_PATH).ok();
+        return;
+    };
+
+    // 处理CLI
     let matches = cli::cli::cli();
     cli::matches::matches(matches);
+
     // 清除临时目录
-    if TEMP_PATH.exists() {
-        if let Err(_e) = remove_dir_all(&*TEMP_PATH) {
-            writeConsole(ConsoleType::Err, "Temporary directory deletion failed");
-        }
-    };
+    if TEMP_PATH.exists() && remove_dir_all(&*TEMP_PATH).is_err() {
+        writeConsole(ConsoleType::Err, &getLocaleText("temp-remove-failed", None));
+    }
 }

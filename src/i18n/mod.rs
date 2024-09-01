@@ -28,7 +28,7 @@ pub fn getLocaleText(id: &str, args: Option<&HashMap<String, FluentValue>>) -> S
     };
 
     if let Some(args) = args {
-        LOCALES.lookup_with_args(&lang, id, &args)
+        LOCALES.lookup_with_args(&lang, id, args)
     } else {
         LOCALES.lookup(&lang, id)
     }

@@ -1,7 +1,9 @@
 use std::cmp::Ordering;
 use std::error::Error;
+use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::iter::repeat_with;
 use std::path::{Path, PathBuf};
 use crate::Asset;
 use glob::MatchOptions;
@@ -9,7 +11,7 @@ use glob::MatchOptions;
 /// 写到文件
 pub fn writeEmbedFile(filePath: &str, outFilePath: &Path) -> Result<(), Box<dyn Error>> {
     let file = Asset::get(filePath).unwrap();
-    File::create(outFilePath)?.write_all(&file)?;
+    File::create(outFilePath)?.write_all(&file.data)?;
     Ok(())
 }
 
@@ -31,7 +33,7 @@ pub fn writeLogFile(logPath: &Path, content: &str) -> Result<(), Box<dyn Error>>
 /// 2. 文件通配符 如 *.inf
 pub fn getFileList(path: &Path, fileType: &str) -> Result<Vec<PathBuf>, Box<dyn Error>> {
     let srerch = glob::glob_with(
-        &*format!(r"{}\**\{}", path.to_str().unwrap(), fileType),
+        &format!(r"{}\**\{}", path.to_str().unwrap(), fileType),
         MatchOptions {
             case_sensitive: false,
             require_literal_separator: false,
@@ -89,7 +91,27 @@ pub fn compareVersiopn(version1: &str, version2: &str) -> Ordering {
     Ordering::Equal
 }
 
-// 增加字符串截取方法
+/// 生成临时文件名
+/// # 参数
+/// 1. 前缀
+/// 2. 后缀
+/// 3. 长度
+pub fn getTmpName(prefix: &str, suffix: &str, rand_len: usize) -> OsString {
+    let capacity = prefix
+        .len()
+        .saturating_add(suffix.len())
+        .saturating_add(rand_len);
+    let mut buf = OsString::with_capacity(capacity);
+    buf.push(prefix);
+    let mut char_buf = [0u8; 4];
+    for c in repeat_with(fastrand::alphanumeric).take(rand_len) {
+        buf.push(c.encode_utf8(&mut char_buf));
+    }
+    buf.push(suffix);
+    buf
+}
+
+// 增加字符串自定义方法
 pub trait String_utils {
     fn get_string_left(&self, right: &str) -> Result<String, Box<dyn Error>>;
     fn get_string_center(&self, start: &str, end: &str) -> Result<String, Box<dyn Error>>;
@@ -102,8 +124,9 @@ impl String_utils for String {
         let endSize = self
             .find(right)
             .ok_or_else(|| "发生错误-查找结束位置失败".to_owned())?;
-        Ok((&self[..endSize]).to_string())
+        Ok((self[..endSize]).to_string())
     }
+
     /// 取出字符串中间文本
     fn get_string_center(&self, start: &str, end: &str) -> Result<String, Box<dyn Error>> {
         let startSize = self
@@ -113,13 +136,14 @@ impl String_utils for String {
             + self[startSize..]
             .find(end)
             .ok_or_else(|| "发生错误-查找结束位置失败".to_owned())?;
-        Ok((&self[startSize + start.len()..endSize]).to_string())
+        Ok((self[startSize + start.len()..endSize]).to_string())
     }
+
     /// 取出字符串右边文本
     fn get_string_right(&self, left: &str) -> Result<String, Box<dyn Error>> {
         let startSize = self
             .find(left)
             .ok_or_else(|| "发生错误-查找左边位置失败".to_owned())?;
-        Ok((&self[startSize + left.len()..]).to_string())
+        Ok((self[startSize + left.len()..]).to_string())
     }
 }

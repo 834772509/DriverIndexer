@@ -1,5 +1,5 @@
 use crate::i18n::getLocaleText;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// 是否为有效的路径
 pub fn isValidPath(path: String) -> Result<(), String> {
@@ -18,6 +18,18 @@ pub fn isValidDirectory(directory: String) -> Result<(), String> {
     if !path.is_dir() {
         return Err(getLocaleText("path-not-exist", None));
     };
+    Ok(())
+}
+
+/// 是否为有效的系统路径
+pub fn isValidSystemPath(systemPath: String) -> Result<(), String>{
+    let path = Path::new(&systemPath);
+    if !path.exists() {
+        return Err(getLocaleText("path-not-exist", None));
+    };
+    if !path.join(r"Windows\System32\cmd.exe").exists() {
+        return Err(getLocaleText("not-system-path", None));
+    }
     Ok(())
 }
 
