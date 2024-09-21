@@ -107,10 +107,10 @@ Note: **You cannot set a password for the driver package**.
 
 The logs will be stored in the program directory: `\DriverIndexer.log`
 
-`DriverIndexer.exe commandParameter --debug`
+`DriverIndexer.exe --debug command Parameter `
 
-- `DriverIndexer.exe create-index D:\netcard index.json --debug`
-- `DriverIndexer.exe load-driver D:\netcard --debug`
+- `DriverIndexer.exe --debug create-index D:\netcard index.json`
+- `DriverIndexer.exe --debug load-driver D:\netcard`
 
 ### View help
 

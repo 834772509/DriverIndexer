@@ -107,10 +107,10 @@
 
 日志将会保存在程序目录下：`\DriverIndexer.log`
 
-`DriverIndexer.exe 命令 参数 --debug`
+`DriverIndexer.exe --debug 命令 参数`
 
-- `DriverIndexer.exe create-index D:\netcard index.json --debug`
-- `DriverIndexer.exe load-driver D:\netcard --debug`
+- `DriverIndexer.exe --debug create-index D:\netcard index.json`
+- `DriverIndexer.exe --debug load-driver D:\netcard`
 
 ### 查看帮助
 
